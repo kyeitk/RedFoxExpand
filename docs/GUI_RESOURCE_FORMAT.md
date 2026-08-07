@@ -160,11 +160,3 @@ assets/Kyeitk/compatibility/examplemod/textures/gui/inventory.png
 
 若没有其他有效配置命中当前 GUI，界面保持原版。错误不会保留上一次已经禁用或已经删除的 Kyeitk
 快照。
-
-## 6. 发布验证范围
-
-发布前需确认严格 JSON 可解析、引用的 PNG 完整、动画帧尺寸一致且保留 Alpha 通道，并验证
-缓存选帧、缺帧策略、超出 256 UV 时的原版背景取样以及玩家背包原点稳定性。
-
-公开仓库不分发内部验证代码、本地材质包、参考底包或第三方图片。游戏内视觉、GUI 缩放和
-资源重载仍需在 Minecraft 客户端完成。
