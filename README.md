@@ -237,9 +237,6 @@ assets/Kyeitk/compatibility/<modid>/textures/gui/inventory.png
 build/libs/RedFoxExpand-1.8.9-0.1.0.jar
 ```
 
-公开仓库只包含 Mod 主体的编译和维护文件，不包含工作区内部验证代码、验证资源或
-第三方材质。
-
 ## 文档
 
 - [功能状态与实现边界](docs/FEATURES.md)
