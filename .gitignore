@@ -1,0 +1,41 @@
+# Gradle and build output
+.gradle/
+build/
+out/
+
+# Local Minecraft/Forge runtime
+run/
+logs/
+crash-reports/
+*.log
+hs_err_pid*
+
+# IDE metadata
+.idea/
+.settings/
+.classpath
+.project
+*.iml
+*.ipr
+*.iws
+*.launch
+
+# Local-only test/resource-pack material. Some fixtures contain third-party
+# assets whose licences forbid redistribution.
+src/test/
+test/
+tests/
+example-resourcepack/
+example-animated-resourcepack/
+example-resourcepack.zip
+example-animated-resourcepack.zip
+reference-pack-case/
+migration-staging/
+tools/
+*.zip
+§*/
+
+# Operating-system noise
+.DS_Store
+Thumbs.db
+desktop.ini
