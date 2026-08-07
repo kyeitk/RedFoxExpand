@@ -256,8 +256,6 @@ build/libs/RedFoxExpand-1.8.9-0.1.0.jar
 - 不支持现代 `menu_id`、按钮/widget 或玩家 3D 模型独立偏移；
 - 动画条件仅有 `always` 和 `never`；
 - 无法枚举后备文件的自定义 `IResourcePack` 不能提供大写 `assets/Kyeitk/`；
-- 编译不能替代游戏内渲染验证；GUI 缩放、窗口尺寸、F3+T、显卡驱动和 Mod 组合仍需
-  实机检查。
 
 ## 许可
 
