@@ -92,4 +92,3 @@ RedFoxExpand 在每次资源加载时按下列流程处理：
 - 静态/动画 GUI 图片必须是 `.png`；缺失或无法解码时，该配置文件被安全跳过。
 - 无法枚举后备文件的自定义 `IResourcePack` 无法提供大写 Kyeitk 资源，会记录日志而不会崩溃。
 - IDE 缓存、Gradle 缓存、日志、crash report 和本地游戏运行目录。
- 
