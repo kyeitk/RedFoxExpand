@@ -1,5 +1,7 @@
 # RedFoxExpand
 
+[![License: CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
 RedFoxExpand 是由 **Kyeitk** 开发的 Minecraft **1.8.9 Forge** 客户端 Mod。它允许材质包作者通过
 固定的 `assets/Kyeitk/` 目录和 JSON 配置修改容器 GUI，而不必修改或重新编译 Mod。
 
