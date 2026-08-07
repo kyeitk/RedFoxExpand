@@ -5,6 +5,7 @@
 [![Java](https://img.shields.io/badge/Java-8-red.svg)](https://www.oracle.com/java/)
 [![Mod Loader](https://img.shields.io/badge/Mod%20Loader-Forge-blue.svg)](https://files.minecraftforge.net/)
 [![Client Side](https://img.shields.io/badge/Side-Client--Only-purple.svg)](#)
+[![Status](https://img.shields.io/badge/Status-Development-yellow.svg)](#)
 
 RedFoxExpand 是由 **Kyeitk** 开发的 Minecraft **1.8.9 Forge** 客户端 Mod。它允许材质包作者通过
 固定的 `assets/Kyeitk/` 目录和 JSON 配置修改容器 GUI，而不必修改或重新编译 Mod。
