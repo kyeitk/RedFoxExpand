@@ -160,4 +160,3 @@ assets/Kyeitk/compatibility/examplemod/textures/gui/inventory.png
 
 若没有其他有效配置命中当前 GUI，界面保持原版。错误不会保留上一次已经禁用或已经删除的 Kyeitk
 快照。
- 
