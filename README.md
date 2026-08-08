@@ -1,6 +1,6 @@
 # RedFoxExpand
 
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/Assets-License%20CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.8.9-green.svg)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-8-red.svg)](https://www.oracle.com/java/)
 [![Mod Loader](https://img.shields.io/badge/Mod%20Loader-Forge-blue.svg)](https://files.minecraftforge.net/)
