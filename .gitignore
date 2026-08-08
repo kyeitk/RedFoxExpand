@@ -23,6 +23,10 @@ hs_err_pid*
 # Local-only test/resource-pack material. Some fixtures contain third-party
 # assets whose licences forbid redistribution.
 src/test/
+examples/
+docs/TESTING.md
+docs/MIGRATION_AUDIT.md
+docs/ARCHITECTURE.md
 test/
 tests/
 example-resourcepack/

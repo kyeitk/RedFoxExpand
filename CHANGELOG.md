@@ -1,37 +1,29 @@
 # Changelog
 
-本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。正式版本使用 `vX.Y.Z` Git Tag。
+本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。Minecraft 26.2 版本使用
+`vX.Y.Z-mc26.2` Git Tag。
 
-## [0.1.0] - 2026-08-08
+## [0.1.0-mc26.2] - 2026-08-09
 
 ### Added
 
-- 新增固定 `assets/Kyeitk/` 资源目录扫描，支持文件夹、ZIP 材质包和可枚举 Mod JAR；
-- 新增 `screen_class`、`container_class` / `menu_class`、`screen_title` GUI 目标匹配；
-- 新增 GUI 位置/尺寸、槽位偏移/高亮、标题/标签、三层贴图和前景文字配置；
-- 新增整图、局部 UV、三种锚点、浮点位置与缩放；
-- 新增 RGBA / Alpha 半透明绘制及完整 OpenGL 状态恢复；
-- 新增缓存式 GUI 动画、逐帧时长、循环、默认图和缺帧策略；
-- 新增 `compatibility/<modid>/` 第三方 Mod 兼容目录；
-- 新增 F3+T 不可变快照重载和当前 GUI 刷新；
-- 新增旧 Polytone GUI modifier 格式的兼容回退；
-- GUI 和槽位类目标新增显式 `exact` / `assignable` 匹配；
-- 新增 `resource_type`，区分原始 ResourceLocation、GUI sprite 和旧启发式兼容；
-- 标题、容器和界面规则按由低到高优先级共同合并；
-- 新增面向材质包作者和开发者的完整文档。
+- 新增 Minecraft 26.2 / Fabric / JDK 25 独立构建；
+- 新增原生小写 ResourceManager 协议、严格 Schema v2 和同来源 pack manifest/config 关联；
+- 新增 pack priority、definition priority 以及 `append/replace/disable` 稳定合并；
+- 新增 screen/menu、标题、menu type、GUI resource、Mod namespace 和组合 matcher；
+- 新增独立逻辑 geometry、Slot 合作位移、渐变高亮、三层贴图和语义文本；
+- 新增显式 `resource_location`、`gui_sprite`、`pack_resource` 纹理类型；
+- 新增时间动画、资源预算、错误隔离和 F3+T 原子 generation 切换；
+- 新增基于 `GuiGraphicsExtractor` / `RenderPipelines` 的现代渲染后端。
 
 ### Fixed
 
-- 修复扩展 GUI 尺寸被用于原版固定 UV 背景取样而产生的纹理环绕；
-- 修复 `InventoryEffectRenderer` 在打开玩家背包后的下一 tick 重算原点导致整体左移；
-- 修复资源重载后 GUI 和槽位偏移累计；
-- 修复低 Alpha 像素被 Alpha Test 裁切以及绘制状态污染后续 GUI；
-- 修复 LWJGL 2 `glGetFloat` 对缓冲区容量的要求导致的崩溃。
-- 完整类名不再退化为简单类名比较，避免不同包中同名 GUI/Slot 误命中；
-- 玩家背包不再因药水效果改变 GUI、槽位、人物或 GUI 锚点贴图的水平原点；
-- 药水效果列表改为优先紧邻 GUI 右侧，窄屏时钳制在可见区域。
+- 修复 underlay 被原版全屏灰色遮罩压暗的问题；
+- 修复扩展 GUI 与 Slot 在 reload、resize 或其他布局变化后累计漂移的问题；
+- 修复配方书展开/收起时破限纹理与 Slot 不同步的问题，`gui` 锚点改用实时容器原点；
+- 修复动画目标尺寸比例错误导致正方形帧被压扁的问题。
 
 ### Release
 
-- 公开仓库排除本地运行目录、构建缓存、日志、测试材质包、参考底包和受限制第三方素材；
-- 公开仓库不包含工作区内部验证代码和验证资源。
+- 公开 `26.2` 分支仅包含主源码、客户端源码、构建脚本、公开文档和发布 JAR；
+- 排除自动验证代码、示例/验证材质包、迁移审计、本地运行目录和受限制第三方素材。
