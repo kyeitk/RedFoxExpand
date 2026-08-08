@@ -1,6 +1,5 @@
 package redfoxexpand.client.render;
 
-import net.minecraft.client.renderer.GlStateManager;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
@@ -57,17 +56,17 @@ public final class AlphaBlendState implements AutoCloseable {
         if (state.scissorEnabled) {
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
         }
-        GlStateManager.disableDepth();
-        GlStateManager.disableAlpha();
-        GlStateManager.enableTexture2D();
-        GlStateManager.enableBlend();
-        GlStateManager.tryBlendFuncSeparate(
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDisable(GL11.GL_ALPHA_TEST);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL14.glBlendFuncSeparate(
                 GL11.GL_SRC_ALPHA,
                 GL11.GL_ONE_MINUS_SRC_ALPHA,
                 GL11.GL_ONE,
                 GL11.GL_ZERO
         );
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         return state;
     }
 
@@ -84,58 +83,58 @@ public final class AlphaBlendState implements AutoCloseable {
         }
         restored = true;
 
-        GlStateManager.bindTexture(boundTexture);
-        GlStateManager.tryBlendFuncSeparate(
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, boundTexture);
+        GL14.glBlendFuncSeparate(
                 blendSourceRgb,
                 blendDestinationRgb,
                 blendSourceAlpha,
                 blendDestinationAlpha
         );
-        GlStateManager.alphaFunc(alphaFunction, alphaReference);
-        GlStateManager.color(red, green, blue, alpha);
+        GL11.glAlphaFunc(alphaFunction, alphaReference);
+        GL11.glColor4f(red, green, blue, alpha);
 
         restoreManagedState(textureEnabled, new StateToggle() {
             @Override
             public void enable() {
-                GlStateManager.enableTexture2D();
+                GL11.glEnable(GL11.GL_TEXTURE_2D);
             }
 
             @Override
             public void disable() {
-                GlStateManager.disableTexture2D();
+                GL11.glDisable(GL11.GL_TEXTURE_2D);
             }
         });
         restoreManagedState(blendEnabled, new StateToggle() {
             @Override
             public void enable() {
-                GlStateManager.enableBlend();
+                GL11.glEnable(GL11.GL_BLEND);
             }
 
             @Override
             public void disable() {
-                GlStateManager.disableBlend();
+                GL11.glDisable(GL11.GL_BLEND);
             }
         });
         restoreManagedState(alphaEnabled, new StateToggle() {
             @Override
             public void enable() {
-                GlStateManager.enableAlpha();
+                GL11.glEnable(GL11.GL_ALPHA_TEST);
             }
 
             @Override
             public void disable() {
-                GlStateManager.disableAlpha();
+                GL11.glDisable(GL11.GL_ALPHA_TEST);
             }
         });
         restoreManagedState(depthEnabled, new StateToggle() {
             @Override
             public void enable() {
-                GlStateManager.enableDepth();
+                GL11.glEnable(GL11.GL_DEPTH_TEST);
             }
 
             @Override
             public void disable() {
-                GlStateManager.disableDepth();
+                GL11.glDisable(GL11.GL_DEPTH_TEST);
             }
         });
         if (scissorEnabled) {

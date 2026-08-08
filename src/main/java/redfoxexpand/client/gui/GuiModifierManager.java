@@ -3,11 +3,15 @@ package redfoxexpand.client.gui;
 import redfoxexpand.RedFoxExpand;
 import redfoxexpand.client.compat.LegacyResourceAdapter;
 import redfoxexpand.client.config.GuiConfigLoader;
+import redfoxexpand.client.config.DefinitionRegistry;
 import redfoxexpand.client.config.GuiDefinition;
 import redfoxexpand.client.resource.KyeitkResourceScanner;
 import redfoxexpand.client.resource.KyeitkTextureRegistry;
+import redfoxexpand.client.resource.NativeManifestScanner;
+import redfoxexpand.client.resource.NativeResourcePathResolver;
 import redfoxexpand.client.resource.ResourcePackScanner;
 import redfoxexpand.client.resource.ResourcePathResolver;
+import redfoxexpand.client.resource.ResourceLimits;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -17,7 +21,7 @@ import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.FMLCommonHandler;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -44,19 +48,26 @@ public final class GuiModifierManager {
                 (SimpleReloadableResourceManager) resourceManager;
         KyeitkResourceScanner.ResourceIndex index = KyeitkResourceScanner.scan(reloadable);
         List<KyeitkResourceScanner.ResourceFile> canonicalConfigs = index.guiConfigs();
-        List<ResourceLocation> legacyConfigs = Collections.emptyList();
+        List<ResourceLocation> legacyConfigs = ResourcePackScanner.findGuiModifiers(reloadable);
+        List<ResourceLocation> nativeConfigs = NativeManifestScanner.findConfigs(resourceManager);
         List<GuiDefinition> next = new ArrayList<GuiDefinition>();
         KyeitkTextureRegistry nextTextures = new KyeitkTextureRegistry(
                 Minecraft.getMinecraft().getTextureManager()
         );
         try {
+            // Formats are candidates, not a global switch. A bad or unrelated
+            // Kyeitk file must never suppress valid legacy definitions.
+            loadLegacy(legacyConfigs, resourceManager, next);
             if (!canonicalConfigs.isEmpty()) {
                 ResourcePathResolver resolver = new ResourcePathResolver(index, nextTextures);
                 loadCanonical(canonicalConfigs, resolver, next);
-            } else {
-                legacyConfigs = ResourcePackScanner.findGuiModifiers(reloadable);
-                loadLegacy(legacyConfigs, resourceManager, next);
             }
+            loadNative(
+                    nativeConfigs,
+                    resourceManager,
+                    new NativeResourcePathResolver(resourceManager),
+                    next
+            );
         } catch (Throwable error) {
             nextTextures.close();
             if (error instanceof Error) {
@@ -70,16 +81,18 @@ public final class GuiModifierManager {
 
         KyeitkTextureRegistry previousTextures = textureRegistry;
         textureRegistry = nextTextures;
-        modifiers = Collections.unmodifiableList(next);
+        next = DefinitionRegistry.resolve(next);
+        modifiers = next;
         refreshCurrentScreen();
         if (previousTextures != null) {
             previousTextures.close();
         }
         RedFoxExpand.LOGGER.info(
-                "Loaded {} GUI modifier(s) from {} {} resource path(s)",
+                "Loaded {} GUI modifier(s) from {} legacy, {} Kyeitk v1 and {} native v2 path(s)",
                 next.size(),
-                canonicalConfigs.isEmpty() ? legacyConfigs.size() : canonicalConfigs.size(),
-                canonicalConfigs.isEmpty() ? "legacy" : "Kyeitk"
+                legacyConfigs.size(),
+                canonicalConfigs.size(),
+                nativeConfigs.size()
         );
     }
 
@@ -91,7 +104,11 @@ public final class GuiModifierManager {
         for (KyeitkResourceScanner.ResourceFile resource : configs) {
             InputStream stream = null;
             try {
-                stream = resource.open();
+                stream = ResourceLimits.limited(
+                        resource.open(),
+                        ResourceLimits.MAX_CONFIG_BYTES,
+                        resource.toString()
+                );
                 Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
                 result.addAll(configLoader.load(
                         new ResourceLocation(ResourcePathResolver.LOWERCASE_NAMESPACE, resource.path),
@@ -123,11 +140,51 @@ public final class GuiModifierManager {
                 if (stack.isEmpty()) {
                     continue;
                 }
-                stream = stack.get(stack.size() - 1).getInputStream();
+                stream = ResourceLimits.limited(
+                        stack.get(stack.size() - 1).getInputStream(),
+                        ResourceLimits.MAX_CONFIG_BYTES,
+                        location.toString()
+                );
                 Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
                 result.addAll(configLoader.load(location, reader, LegacyResourceAdapter.INSTANCE));
             } catch (Exception error) {
                 RedFoxExpand.LOGGER.error("Invalid legacy GUI modifier {}", location, error);
+            } finally {
+                if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        }
+    }
+
+    private void loadNative(
+            List<ResourceLocation> locations,
+            IResourceManager resourceManager,
+            NativeResourcePathResolver resolver,
+            List<GuiDefinition> result
+    ) {
+        for (ResourceLocation location : locations) {
+            InputStream stream = null;
+            try {
+                List<IResource> stack = resourceManager.getAllResources(location);
+                if (stack.isEmpty()) {
+                    continue;
+                }
+                stream = ResourceLimits.limited(
+                        stack.get(stack.size() - 1).getInputStream(),
+                        ResourceLimits.MAX_CONFIG_BYTES,
+                        location.toString()
+                );
+                result.addAll(configLoader.load(
+                        location,
+                        new InputStreamReader(stream, StandardCharsets.UTF_8),
+                        resolver
+                ));
+            } catch (Exception error) {
+                RedFoxExpand.LOGGER.error("Invalid native Kyeitk v2 config {}", location, error);
             } finally {
                 if (stream != null) {
                     try {
@@ -248,33 +305,44 @@ public final class GuiModifierManager {
         if (!FMLCommonHandler.instance().getEffectiveSide().isClient()) {
             return;
         }
+        if (!(slot instanceof SlotBaseAccess)) {
+            return;
+        }
         ResolvedGuiModifier modifier = resolve(container);
         resetAndApply(container, slot, modifier);
     }
 
     public void onPostInit(GuiContainer screen) {
-        ((GuiModifierScreenAccess) screen).redfoxexpand$onPostInit();
-    }
-
-    public void applyAllSlots(GuiContainer screen, ResolvedGuiModifier modifier) {
-        for (Slot slot : screen.inventorySlots.inventorySlots) {
-            resetAndApply(screen.inventorySlots, slot, modifier);
+        if (screen instanceof GuiModifierScreenAccess) {
+            ((GuiModifierScreenAccess) screen).redfoxexpand$onPostInit();
         }
     }
 
-    private static void resetAndApply(
+    public void applyAllSlots(GuiContainer screen, ResolvedGuiModifier modifier) {
+        for (Object candidate : screen.inventorySlots.inventorySlots) {
+            resetAndApply(screen.inventorySlots, (Slot) candidate, modifier);
+        }
+    }
+
+    static void resetAndApply(
             Container container,
             Slot slot,
             ResolvedGuiModifier modifier
     ) {
+        if (!(slot instanceof SlotBaseAccess)) {
+            return;
+        }
         SlotBaseAccess base = (SlotBaseAccess) slot;
-        base.redfoxexpand$captureBase();
-        base.redfoxexpand$resetToBase();
+        base.redfoxexpand$removeAppliedDelta();
         if (modifier == null) {
             return;
         }
         for (SlotModifier slotModifier : modifier.matchingSlots(container, slot)) {
             slotModifier.apply(slot);
+            base.redfoxexpand$recordAppliedDelta(
+                    slotModifier.xOffset,
+                    slotModifier.yOffset
+            );
         }
     }
 

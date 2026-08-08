@@ -23,6 +23,7 @@ public final class ResolvedGuiModifier {
     private final List<SlotModifier> slotModifiers;
     public final List<SpriteOverlay> sprites;
     public final List<TextOverlay> texts;
+    private final List<FontRule> fontRules;
 
     private ResolvedGuiModifier(
             int xOffset,
@@ -37,7 +38,8 @@ public final class ResolvedGuiModifier {
             Integer labelColor,
             List<SlotModifier> slotModifiers,
             List<SpriteOverlay> sprites,
-            List<TextOverlay> texts
+            List<TextOverlay> texts,
+            List<FontRule> fontRules
     ) {
         this.xOffset = xOffset;
         this.yOffset = yOffset;
@@ -52,6 +54,7 @@ public final class ResolvedGuiModifier {
         this.slotModifiers = Collections.unmodifiableList(slotModifiers);
         this.sprites = Collections.unmodifiableList(sprites);
         this.texts = Collections.unmodifiableList(texts);
+        this.fontRules = Collections.unmodifiableList(fontRules);
     }
 
     static ResolvedGuiModifier merge(List<GuiDefinition> modifiers) {
@@ -68,6 +71,7 @@ public final class ResolvedGuiModifier {
         List<SlotModifier> slots = new ArrayList<SlotModifier>();
         List<SpriteOverlay> sprites = new ArrayList<SpriteOverlay>();
         List<TextOverlay> texts = new ArrayList<TextOverlay>();
+        List<FontRule> fontRules = new ArrayList<FontRule>();
 
         for (GuiDefinition modifier : modifiers) {
             xOffset += modifier.xOffset;
@@ -87,6 +91,7 @@ public final class ResolvedGuiModifier {
             slots.addAll(modifier.slotModifiers);
             sprites.addAll(modifier.sprites);
             texts.addAll(modifier.texts);
+            fontRules.addAll(modifier.fontRules);
         }
 
         return new ResolvedGuiModifier(
@@ -102,8 +107,18 @@ public final class ResolvedGuiModifier {
                 labelColor,
                 slots,
                 sprites,
-                texts
+                texts,
+                fontRules
         );
+    }
+
+    FontRule matchingFontRule(String text, int x, int y, int ordinal) {
+        for (FontRule rule : fontRules) {
+            if (rule.matches(text, x, y, ordinal)) {
+                return rule;
+            }
+        }
+        return null;
     }
 
     public List<SlotModifier> matchingSlots(Container container, Slot slot) {

@@ -1,37 +1,30 @@
 # Changelog
 
-本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。正式版本使用 `vX.Y.Z` Git Tag。
+本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。Minecraft 1.7.10 版本使用
+`vX.Y.Z-mc1.7.10` Git Tag。
 
-## [0.1.0] - 2026-08-08
+## [0.1.0-mc1.7.10] - 2026-08-08
 
 ### Added
 
-- 新增固定 `assets/Kyeitk/` 资源目录扫描，支持文件夹、ZIP 材质包和可枚举 Mod JAR；
-- 新增 `screen_class`、`container_class` / `menu_class`、`screen_title` GUI 目标匹配；
-- 新增 GUI 位置/尺寸、槽位偏移/高亮、标题/标签、三层贴图和前景文字配置；
-- 新增整图、局部 UV、三种锚点、浮点位置与缩放；
-- 新增 RGBA / Alpha 半透明绘制及完整 OpenGL 状态恢复；
-- 新增缓存式 GUI 动画、逐帧时长、循环、默认图和缺帧策略；
-- 新增 `compatibility/<modid>/` 第三方 Mod 兼容目录；
-- 新增 F3+T 不可变快照重载和当前 GUI 刷新；
-- 新增旧 Polytone GUI modifier 格式的兼容回退；
-- GUI 和槽位类目标新增显式 `exact` / `assignable` 匹配；
-- 新增 `resource_type`，区分原始 ResourceLocation、GUI sprite 和旧启发式兼容；
-- 标题、容器和界面规则按由低到高优先级共同合并；
-- 新增面向材质包作者和开发者的完整文档。
+- 新增 Minecraft 1.7.10 / Forge `10.13.4.1614` 独立构建；
+- 移植 GUI 配置、槽位、三层贴图、动画、文本、尺寸、药水布局和 F3+T 生命周期；
+- 新增 `platform/forge1710` API、类名、标题和背景适配；
+- 新增 native lowercase Kyeitk v2 manifest，同时保留跨版本 v1 与旧 Polytone 格式；
+- legacy、v1、v2 同时生成候选，并按稳定 `id`、`priority` 和 `append/replace/disable` 合并；
+- 新增显式 `font_rules`、现代 `*Menu` 名称映射和资源预算；
+- 新增 ForgeGradle 1.2 失效下载地址到 Mojang 官方 content-addressed URL 的构建适配；
+- 新增面向材质包作者和开发者的 1.7.10 文档。
 
 ### Fixed
 
-- 修复扩展 GUI 尺寸被用于原版固定 UV 背景取样而产生的纹理环绕；
-- 修复 `InventoryEffectRenderer` 在打开玩家背包后的下一 tick 重算原点导致整体左移；
-- 修复资源重载后 GUI 和槽位偏移累计；
-- 修复低 Alpha 像素被 Alpha Test 裁切以及绘制状态污染后续 GUI；
-- 修复 LWJGL 2 `glGetFloat` 对缓冲区容量的要求导致的崩溃。
-- 完整类名不再退化为简单类名比较，避免不同包中同名 GUI/Slot 误命中；
-- 玩家背包不再因药水效果改变 GUI、槽位、人物或 GUI 锚点贴图的水平原点；
-- 药水效果列表改为优先紧邻 GUI 右侧，窄屏时钳制在可见区域。
+- 修复 Slot 重载时覆盖其他 Mod 修改的问题，只撤销 RedFoxExpand 自身记录的偏移；
+- 修复扩展 GUI 背景绘制时伪造屏幕宽高的问题；
+- 修复 Mixin AP 生成的 Shadow SRG 未接入 ForgeGradle `reobf`，导致生产客户端 Mixin 失效；
+- 修复可选 Slot/GUI Mixin 缺失时因接口强制转换而崩溃的问题；
+- 修复药水效果出现时玩家背包左移，效果列表改为显示在 GUI 右侧可见区域。
 
 ### Release
 
-- 公开仓库排除本地运行目录、构建缓存、日志、测试材质包、参考底包和受限制第三方素材；
-- 公开仓库不包含工作区内部验证代码和验证资源。
+- 公开 `1.7.10` 分支仅包含主源码、构建脚本、公开文档和发布 JAR；
+- 排除内部验证代码、验证资源、构建缓存、本地运行目录和受限制第三方素材。

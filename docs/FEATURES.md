@@ -1,75 +1,33 @@
-# RedFoxExpand 功能说明
+# 功能说明
 
-本文记录 `0.1.0` 的实际功能、实现入口和验证边界。README 面向普通用户与材质包作者；本页面向维护者
-和兼容开发者。
+本文只描述 `RedFoxExpand-1.7.10` 当前已经实现的公开能力与边界。
 
-## 功能矩阵
+## 资源发现与合并
 
-| 功能 | 状态 | 说明 |
-|---|---|---|
-| 固定 Kyeitk 目录 | 已实现 | 扫描 `assets/Kyeitk/`，兼容小写 `kyeitk` 物理目录 |
-| 文件夹/ZIP/Mod JAR | 已实现 | 按已启用资源包优先级建立最高优先级路径索引 |
-| GUI 目标匹配 | 已实现 | 标题 → 容器 → 界面由低到高合并；类目标支持 `exact/assignable` |
-| GUI 几何修改 | 已实现 | 位置、逻辑宽高、标题与标签偏移 |
-| 槽位修改 | 已实现 | 索引/范围/坐标/类名筛选，类名支持 `exact/assignable`，并修改位置与高亮颜色 |
-| 玩家背包药水布局 | 已实现 | 药水不改变 GUI 原点；列表位于 GUI 右侧并在窄屏钳制到可见区域 |
-| 自定义贴图 | 已实现 | `full`、`region`、显式资源类型、三种锚点和三种渲染层 |
-| RGBA / Alpha | 已实现 | 标准 Alpha 混合并恢复调用前 OpenGL 状态 |
-| 动画贴图 | 已实现（基础） | 帧顺序、时长、循环、`always/never`、默认图、缺帧策略 |
-| F3+T 热重载 | 已实现 | 重建不可变快照、释放旧纹理并刷新当前容器 GUI |
-| 第三方 Mod 目录 | 已实现 | 仅在 `<modid>` 已加载时应用 compatibility 配置 |
-| 旧 Polytone 配置 | 已实现（回退） | 仅在没有适用 Kyeitk 配置时加载 |
-| 复杂动画条件 | Planned | 表达式、鼠标悬停、游戏状态条件尚未实现 |
-| 动态坐标/尺寸 | Planned | 当前位置和尺寸在配置解析后固定 |
-| 按钮/widget | Planned | 0.1.0 只处理容器 GUI、槽位、贴图和文字 |
-| 玩家模型独立偏移 | Planned | 扩展 GUI 时需由材质设计适配模型窗口 |
+- 兼容 `assets/Kyeitk/` v1 文件夹、ZIP/JAR、Mod 来源与服务器资源包；
+- 支持原生小写域 `assets/kyeitk/redfoxexpand/index.json` v2 manifest；
+- 兼容 `assets/<namespace>/polytone/gui_modifiers/**/*.json`；
+- legacy、v1、v2 同时生成候选，不使用“发现新格式就全局关闭旧格式”的开关；
+- 按资源包优先级选择同路径内容，再由稳定 `id` 和 `append/replace/disable` 合并；
+- F3+T 时重建不可变配置快照并释放上一代动态纹理。
 
-## 加载与渲染流程
+## GUI 能力
 
-```text
-资源加载 / F3+T
-  -> 扫描 Kyeitk 物理目录
-  -> 选择最高优先级 JSON/PNG
-  -> 严格解析配置并缓存纹理/动画帧
-  -> 原子替换 GUI modifier 快照
-  -> 刷新当前 GuiContainer
+- 目标：`screen_class`、`container_class/menu_class`、`screen_title`；
+- 类匹配：`exact` 或 `assignable`，并支持常见现代 `*Menu` 名到 1.7.10 Container 的版本表映射；
+- GUI 原点、宽高、标题、标签的位置与颜色调整；
+- Slot 索引、范围、原始坐标、类选择器，累积偏移和双色悬停高亮；
+- `underlay`、`background`、`foreground` 三层贴图；
+- `gui`、`screen_center`、`screen` 三种锚点；
+- 整图、区域 UV、Alpha 混合和时间动画；
+- 独立 `texts`、显式 `font_rules`，并保留 v1 标题/标签兼容字段；
+- 玩家背包始终居中，药水效果列表固定到 GUI 右侧可见区域；
+- 每一层批次统一保存和恢复 OpenGL 混合、颜色、Alpha Test、深度与绑定纹理状态。
 
-每帧绘制
-  -> underlay
-  -> 原版背景
-  -> background
-  -> 槽位与物品
-  -> 原版标题/标签
-  -> foreground
-  -> 自定义文字
-```
+## 安全与回退
 
-逐帧绘制不执行文件扫描、JSON 解析或 PNG 解码。
+配置、列表、路径、PNG 和动态纹理代际有明确预算。单个文件失败会记录来源并隔离；顶层 reload
+失败会清空旧快照，避免继续使用失效纹理。动画缺帧支持 `use_default`、`skip`、`disable`。
 
-## 核心模块
-
-| 模块 | 职责 |
-|---|---|
-| `client/resource/KyeitkResourceScanner` | 物理目录、ZIP、资源优先级和安全索引 |
-| `client/resource/ResourcePathResolver` | 路径校验、静态/动画资源解析 |
-| `client/resource/KyeitkTextureRegistry` | PNG 解码、运行时纹理注册与释放 |
-| `client/config/GuiConfigLoader` | 严格 JSON 解析与文件级原子失败 |
-| `client/gui/GuiModifierManager` | 快照、目标匹配、合并和界面刷新 |
-| `client/render/GuiTextureRenderer` | 分层四边形绘制 |
-| `client/render/AnimatedGuiRenderer` | 只访问已缓存帧的时间选帧 |
-| `client/render/AlphaBlendState` | Alpha 混合设置和 OpenGL 状态恢复 |
-| `mixin/MixinGuiContainer` | GUI 几何和渲染阶段接入 |
-| `mixin/MixinContainer` / `MixinSlot` | 槽位基础坐标捕获与幂等重应用 |
-
-## 错误隔离
-
-以下错误会记录来源并跳过整份配置，不会让游戏循环继续持有半有效状态：
-
-- JSON 语法、字段类型、类匹配/资源类型枚举值或颜色非法；
-- 绝对路径、路径穿越或不允许的资源位置；
-- PNG 缺失、损坏或无法解码；
-- 动画帧、时长、条件或缺帧策略非法。
-
-若新快照没有命中当前 GUI，则恢复原版尺寸、槽位和渲染行为。
-
-文档最后同步日期：2026-08-08。
+Mixin 注入点按 1.7.10 Forge 10.13.4.1614 字节码实现，并配置为可选注入：其他 coremod 改写同一方法时，
+局部渲染能力可能降级。真实兼容性仍需在具体的 Minecraft、Forge、OptiFine 和第三方 coremod 组合中验证。

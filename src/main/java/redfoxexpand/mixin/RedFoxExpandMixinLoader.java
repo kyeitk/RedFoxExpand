@@ -1,6 +1,6 @@
 package redfoxexpand.mixin;
 
-import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
+import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import org.spongepowered.asm.launch.MixinBootstrap;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.Mixins;
@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixins;
 import java.util.Map;
 
 @IFMLLoadingPlugin.Name("RedFoxExpand Mixin Loader")
-@IFMLLoadingPlugin.MCVersion("1.8.9")
+@IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.SortingIndex(1001)
 @IFMLLoadingPlugin.TransformerExclusions({
         "redfoxexpand.mixin.RedFoxExpandMixinLoader"

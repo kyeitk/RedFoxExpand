@@ -131,7 +131,11 @@ public final class ResourcePathResolver implements GuiTextureResolver {
     ) {
         InputStream stream = null;
         try {
-            stream = resource.open();
+            stream = ResourceLimits.limited(
+                    resource.open(),
+                    ResourceLimits.MAX_ANIMATION_BYTES,
+                    resource.toString()
+            );
             Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
             JsonObject json = new JsonParser().parse(reader).getAsJsonObject();
             return AnimationDefinition.parse(json);

@@ -22,12 +22,17 @@ public abstract class MixinFontRenderer {
             int color,
             CallbackInfoReturnable<Integer> callback
     ) {
-        FontRenderContext.AdjustedText adjusted = FontRenderContext.adjust(x, y, color);
+        FontRenderContext.AdjustedText adjusted = FontRenderContext.adjust(
+                text,
+                x,
+                y,
+                color
+        );
         if (adjusted != null) {
             callback.setReturnValue(((FontRenderer) (Object) this).drawString(
                     text,
-                    (float) adjusted.x,
-                    (float) adjusted.y,
+                    adjusted.x,
+                    adjusted.y,
                     adjusted.color,
                     false
             ));

@@ -2,9 +2,9 @@ package redfoxexpand.client.gui;
 
 public interface SlotBaseAccess {
 
-    void redfoxexpand$captureBase();
+    void redfoxexpand$removeAppliedDelta();
 
-    void redfoxexpand$resetToBase();
+    void redfoxexpand$recordAppliedDelta(int x, int y);
 
     int redfoxexpand$getBaseX();
 

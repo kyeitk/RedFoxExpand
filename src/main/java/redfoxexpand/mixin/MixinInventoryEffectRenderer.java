@@ -11,10 +11,12 @@ import redfoxexpand.client.gui.GuiModifierScreenAccess;
 @Mixin(InventoryEffectRenderer.class)
 public abstract class MixinInventoryEffectRenderer {
 
-    @Inject(method = "updateActivePotionEffects", at = @At("RETURN"))
+    @Inject(method = "initGui", at = @At("RETURN"))
     private void redfoxexpand$restoreConfiguredOrigin(CallbackInfo callback) {
-        GuiModifierScreenAccess access = (GuiModifierScreenAccess) (Object) this;
-        access.redfoxexpand$afterInventoryEffectOriginUpdate();
+        Object self = this;
+        if (self instanceof GuiModifierScreenAccess) {
+            ((GuiModifierScreenAccess) self).redfoxexpand$afterInventoryEffectOriginUpdate();
+        }
     }
 
     @ModifyVariable(
@@ -23,7 +25,9 @@ public abstract class MixinInventoryEffectRenderer {
             index = 1
     )
     private int redfoxexpand$movePotionEffectsRight(int vanillaX) {
-        GuiModifierScreenAccess access = (GuiModifierScreenAccess) (Object) this;
-        return access.redfoxexpand$getPotionEffectsX();
+        Object self = this;
+        return self instanceof GuiModifierScreenAccess
+                ? ((GuiModifierScreenAccess) self).redfoxexpand$getPotionEffectsX()
+                : vanillaX;
     }
 }

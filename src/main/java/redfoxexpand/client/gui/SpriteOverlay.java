@@ -9,6 +9,7 @@ import net.minecraft.util.ResourceLocation;
 
 import java.util.Locale;
 import java.util.Map;
+import redfoxexpand.client.resource.ResourceLimits;
 
 public final class SpriteOverlay {
 
@@ -160,15 +161,15 @@ public final class SpriteOverlay {
                 ? textureResolver.resolveAnimation(texture)
                 : textureResolver.resolveStatic(texture, guiAtlasId);
 
-        float x = JsonSupport.floatingAlias(json, "screen_x", "x", 0.0F);
-        float y = JsonSupport.floatingAlias(json, "screen_y", "y", 0.0F);
-        float z = JsonSupport.floating(json, "z", 0.0F);
-        float width = JsonSupport.floating(json, "width", 16.0F);
-        float height = JsonSupport.floating(json, "height", 16.0F);
-        float sourceWidth = JsonSupport.floating(json, "source_width", width);
-        float sourceHeight = JsonSupport.floating(json, "source_height", height);
-        float textureWidth = JsonSupport.floatingAlias(json, "tex_width", "texture_width", 256.0F);
-        float textureHeight = JsonSupport.floatingAlias(json, "tex_height", "texture_height", 256.0F);
+        float x = finite(JsonSupport.floatingAlias(json, "screen_x", "x", 0.0F), "x");
+        float y = finite(JsonSupport.floatingAlias(json, "screen_y", "y", 0.0F), "y");
+        float z = finite(JsonSupport.floating(json, "z", 0.0F), "z");
+        float width = finite(JsonSupport.floating(json, "width", 16.0F), "width");
+        float height = finite(JsonSupport.floating(json, "height", 16.0F), "height");
+        float sourceWidth = finite(JsonSupport.floating(json, "source_width", width), "source_width");
+        float sourceHeight = finite(JsonSupport.floating(json, "source_height", height), "source_height");
+        float textureWidth = finite(JsonSupport.floatingAlias(json, "tex_width", "texture_width", 256.0F), "texture_width");
+        float textureHeight = finite(JsonSupport.floatingAlias(json, "tex_height", "texture_height", 256.0F), "texture_height");
         boolean hasRegion = json.has("u") || json.has("v")
                 || json.has("source_width") || json.has("source_height")
                 || json.has("tex_width") || json.has("tex_height")
@@ -197,8 +198,8 @@ public final class SpriteOverlay {
                 x,
                 y,
                 z,
-                JsonSupport.floating(json, "u", 0.0F),
-                JsonSupport.floating(json, "v", 0.0F),
+                finite(JsonSupport.floating(json, "u", 0.0F), "u"),
+                finite(JsonSupport.floating(json, "v", 0.0F), "v"),
                 width,
                 height,
                 sourceWidth,
@@ -265,6 +266,10 @@ public final class SpriteOverlay {
         if (json.has(source) && !json.has(target)) {
             json.add(target, json.get(source));
         }
+    }
+
+    private static float finite(float value, String field) {
+        return ResourceLimits.finiteGuiValue(value, field);
     }
 
     private static boolean isGuiAtlasId(ResourceLocation texture) {

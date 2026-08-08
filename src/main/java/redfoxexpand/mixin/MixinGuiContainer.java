@@ -7,7 +7,7 @@ import redfoxexpand.client.gui.InventoryEffectGeometry;
 import redfoxexpand.client.gui.ResolvedGuiModifier;
 import redfoxexpand.client.gui.SlotModifier;
 import redfoxexpand.client.gui.SpriteOverlay;
-import redfoxexpand.client.gui.VanillaBackgroundGeometry;
+import redfoxexpand.platform.forge1710.Forge1710BackgroundGeometry;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Container;
@@ -19,6 +19,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.lwjgl.opengl.GL11;
 
 @Mixin(GuiContainer.class)
 public abstract class MixinGuiContainer extends GuiScreen implements GuiModifierScreenAccess {
@@ -175,32 +176,43 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
                     false
             );
         }
-        int originalWidth = width;
-        int originalHeight = height;
+        int originalGuiLeft = guiLeft;
+        int originalGuiTop = guiTop;
         int modifiedXSize = xSize;
         int modifiedYSize = ySize;
+        boolean translated = false;
         try {
-            // Vanilla GUI implementations are inconsistent: some use guiLeft/guiTop,
-            // while others recalculate their origin from width/xSize on every frame.
-            // Never expose an expanded xSize/ySize to the vanilla texture draw: 1.8.9
-            // GUI UVs assume a 256px atlas, so sampling the logical extension wraps
-            // the texture and draws a duplicated panel on the right/bottom.
+            // Keep width/height real. Vanilla implementations may use either
+            // guiLeft/guiTop or (width - xSize) / 2; setting both logical origins
+            // to the centered base and translating the matrix handles both forms.
             if (redfoxexpand$modifier != null && redfoxexpand$baseCaptured) {
                 xSize = redfoxexpand$baseXSize;
                 ySize = redfoxexpand$baseYSize;
-                width = VanillaBackgroundGeometry.screenWidthForOrigin(
-                        guiLeft,
+                int centeredLeft = Forge1710BackgroundGeometry.centeredLeft(
+                        width,
                         redfoxexpand$baseXSize
                 );
-                height = VanillaBackgroundGeometry.screenHeightForOrigin(
-                        guiTop,
+                int centeredTop = Forge1710BackgroundGeometry.centeredTop(
+                        height,
                         redfoxexpand$baseYSize
                 );
+                guiLeft = centeredLeft;
+                guiTop = centeredTop;
+                GL11.glPushMatrix();
+                GL11.glTranslatef(
+                        Forge1710BackgroundGeometry.translation(originalGuiLeft, centeredLeft),
+                        Forge1710BackgroundGeometry.translation(originalGuiTop, centeredTop),
+                        0.0F
+                );
+                translated = true;
             }
             drawGuiContainerBackgroundLayer(partialTicks, mouseX, mouseY);
         } finally {
-            width = originalWidth;
-            height = originalHeight;
+            if (translated) {
+                GL11.glPopMatrix();
+            }
+            guiLeft = originalGuiLeft;
+            guiTop = originalGuiTop;
             xSize = modifiedXSize;
             ySize = modifiedYSize;
         }

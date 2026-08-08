@@ -5,7 +5,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.IChatComponent;
-import net.minecraft.world.IWorldNameable;
+import redfoxexpand.platform.forge1710.Forge1710TitleAliases;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -26,8 +26,7 @@ final class GuiTitleResolver {
             Class<?> type = field.getType();
             if (type != String.class
                     && !IChatComponent.class.isAssignableFrom(type)
-                    && !IInventory.class.isAssignableFrom(type)
-                    && !IWorldNameable.class.isAssignableFrom(type)) {
+                    && !IInventory.class.isAssignableFrom(type)) {
                 continue;
             }
             try {
@@ -40,15 +39,7 @@ final class GuiTitleResolver {
     }
 
     private static void addKnownVanillaTitle(String screenName, Set<String> result) {
-        String key = null;
-        if ("GuiCrafting".equals(screenName)) {
-            key = "container.crafting";
-        } else if ("GuiRepair".equals(screenName)) {
-            key = "container.repair";
-        } else if ("GuiMerchant".equals(screenName)) {
-            key = "entity.Villager.name";
-        }
-        if (key != null) {
+        for (String key : Forge1710TitleAliases.keysFor(screenName)) {
             add(key, result);
             add(I18n.format(key), result);
         }
@@ -59,9 +50,12 @@ final class GuiTitleResolver {
             add((String) value, result);
         }
         if (value instanceof IInventory) {
-            addComponent(((IInventory) value).getDisplayName(), result);
-        } else if (value instanceof IWorldNameable) {
-            addComponent(((IWorldNameable) value).getDisplayName(), result);
+            IInventory inventory = (IInventory) value;
+            String name = inventory.getInventoryName();
+            add(name, result);
+            if (!inventory.isCustomInventoryName()) {
+                add(I18n.format(name), result);
+            }
         } else if (value instanceof IChatComponent) {
             addComponent((IChatComponent) value, result);
         }

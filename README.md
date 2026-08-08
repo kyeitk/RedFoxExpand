@@ -1,18 +1,18 @@
 # RedFoxExpand
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.8.9-green.svg)](https://www.minecraft.net/)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.7.10-green.svg)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-8-red.svg)](https://www.oracle.com/java/)
 [![Mod Loader](https://img.shields.io/badge/Mod%20Loader-Forge-blue.svg)](https://files.minecraftforge.net/)
 [![Client Side](https://img.shields.io/badge/Side-Client--Only-purple.svg)](#)
 [![Status](https://img.shields.io/badge/Status-Development-yellow.svg)](#)
 
-RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **1.8.9 Forge** 客户端 Mod。它允许材质包作者通过
-固定的 `assets/Kyeitk/` 目录和 JSON 配置修改容器 GUI，而不必修改或重新编译 Mod。
+RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **1.7.10 Forge** 客户端 Mod。它允许材质包作者通过
+固定的 `assets/Kyeitk/` 目录、原生小写资源域和 JSON 配置修改容器 GUI，而不必修改或重新编译 Mod。
 
-- 当前版本：`0.1.0`（Git Tag：`v0.1.0`）
-- Minecraft：`1.8.9`
-- Forge：`11.15.1.2318`
+- 当前版本：`0.1.0`（Git Tag：`v0.1.0-mc1.7.10`）
+- Minecraft：`1.7.10`
+- Forge：`10.13.4.1614`
 - 运行端：仅客户端
 - Java：8
 
@@ -20,16 +20,17 @@ RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **1.8.9 Forge** 客户�
 
 ### 已实现
 
-- 扫描文件夹、ZIP 材质包和可枚举 Mod JAR 中的 `assets/Kyeitk/`；
-- 按材质包优先级加载 `config/**/*.json` 和 `textures/gui/**/*.png`；
-- 通过界面类、容器类或标题匹配原版及第三方 Mod 容器 GUI，类目标可显式选择精确或继承匹配；
+- 扫描文件夹、ZIP/JAR、Mod 来源和服务器资源包中的 `assets/Kyeitk/` v1 内容；
+- 支持原生小写域 `assets/kyeitk/redfoxexpand/index.json` v2 manifest；
+- 同时生成 legacy、Kyeitk v1 和 native v2 候选，单个坏配置不会关闭其他格式；
+- 通过界面类、容器类或标题匹配原版及第三方 Mod 容器 GUI，类目标支持精确或继承匹配；
+- 支持常见现代 `*Menu` 名称到 Minecraft 1.7.10 Container 类的版本映射；
 - 修改 GUI 位置/尺寸、槽位位置/高亮、标题/标签颜色，并绘制三层贴图和前景文字；
-- 支持整图、局部 UV、GUI/屏幕中心/屏幕左上角锚点、浮点坐标和缩放；
-- 支持 RGBA PNG、局部 Alpha 半透明，并在绘制后恢复 OpenGL 状态；
-- 支持按帧顺序、逐帧时长、循环和静态回退播放动画；
-- 玩家背包在有/无药水效果时保持相同居中布局，药水效果列表统一显示在 GUI 右侧；
-- F3+T 时重新扫描、解析和缓存资源，并刷新当前打开的容器界面；
-- 无效 JSON、损坏/缺失 PNG 或不安全路径按文件跳过，没有有效配置时回退原版 GUI；
+- 支持整图、局部 UV、三种锚点、浮点坐标、缩放、RGBA Alpha 和时间动画；
+- 支持显式 `font_rules`、独立 `texts` 以及 `id`、`priority`、`append/replace/disable` 合并；
+- 玩家背包在有/无药水效果时保持相同居中布局，药水效果列表显示在 GUI 右侧；
+- F3+T 时重建不可变配置快照，并按代释放动态纹理；
+- 配置、路径、列表、PNG 和动态纹理均有资源预算与安全回退；
 - 在没有 Kyeitk 配置时兼容旧 `assets/<namespace>/polytone/gui_modifiers/` 配置。
 
 ### Planned
@@ -44,9 +45,9 @@ RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **1.8.9 Forge** 客户�
 
 ## 安装
 
-1. 安装 Minecraft 1.8.9 和 Forge `11.15.1.2318`；
+1. 安装 Minecraft 1.7.10 和 Forge `10.13.4.1614`；
 2. 从 [GitHub Releases](https://github.com/kyeitk/RedFoxExpand/releases) 下载
-   `RedFoxExpand-1.8.9-0.1.0.jar`；
+   `RedFoxExpand-1.7.10-0.1.0.jar`；
 3. 将 JAR 放入 Minecraft 实例的 `mods/` 目录；
 4. 启动游戏，在“选项 → 资源包”中启用包含 Kyeitk 配置的材质包。
 
@@ -55,6 +56,8 @@ Mod 不要求服务端安装。建议在新增或修改配置后执行 F3+T。
 ## 制作第一个 Kyeitk 材质包
 
 ### 1. 建立目录
+
+与 1.8.9 分支共用的 v1 结构：
 
 ```text
 MyKyeitkPack/
@@ -68,9 +71,9 @@ MyKyeitkPack/
             └─ inventory.png
 ```
 
-`Kyeitk` 是规范物理目录名，请保持此大小写；文件和子目录建议使用小写 ASCII。
+`Kyeitk` 是 v1 规范物理目录名，请保持此大小写；文件和子目录建议使用小写 ASCII。
 
-Minecraft 1.8.9 的最小 `pack.mcmeta`：
+Minecraft 1.7.10 的最小 `pack.mcmeta`：
 
 ```json
 {
@@ -81,9 +84,28 @@ Minecraft 1.8.9 的最小 `pack.mcmeta`：
 }
 ```
 
+1.7.10 分支还支持原生小写域 v2：
+
+```text
+assets/kyeitk/
+└─ redfoxexpand/
+   ├─ index.json
+   ├─ config/inventory.json
+   └─ textures/gui/inventory.png
+```
+
+`assets/kyeitk/redfoxexpand/index.json`：
+
+```json
+{
+  "api_version": 2,
+  "configs": ["redfoxexpand/config/inventory.json"]
+}
+```
+
 ### 2. 放置 GUI 图片
 
-将带 Alpha 通道的 PNG 放到：
+v1 材质包将带 Alpha 通道的 PNG 放到：
 
 ```text
 assets/Kyeitk/textures/gui/inventory.png
@@ -121,22 +143,20 @@ assets/Kyeitk/textures/gui/inventory.png
 
 ## 完整配置示例
 
-下面的示例扩大玩家背包逻辑区域、绘制背景、移动部分槽位、修改颜色并添加文字：
+下面的示例扩大玩家背包逻辑区域、绘制背景、移动部分槽位并添加文字：
 
 ```json
 {
+  "id": "mytheme:player_inventory",
+  "operation": "append",
+  "priority": 0,
   "target_type": "container_class",
   "target": "net.minecraft.inventory.ContainerPlayer",
+  "class_match": "exact",
   "x_offset": 14,
   "y_offset": 12,
   "width_offset": 28,
   "height_offset": 24,
-  "title_x_offset": 4,
-  "title_y_offset": 2,
-  "label_x_offset": 4,
-  "label_y_offset": 0,
-  "title_color": "#FFFFFFFF",
-  "label_color": "#FFB8E8FF",
   "slot_modifiers": [
     {
       "slots": "0-8",
@@ -150,6 +170,7 @@ assets/Kyeitk/textures/gui/inventory.png
     {
       "texture_type": "full",
       "texture": "textures/gui/inventory.png",
+      "resource_type": "resource_location",
       "anchor": "gui",
       "x": 0,
       "y": 0,
@@ -176,13 +197,12 @@ assets/Kyeitk/textures/gui/inventory.png
 - `target_type`：`screen_class`、`container_class` / `menu_class` 或 `screen_title`；
 - `class_match`：类目标使用 `exact`（默认）或显式 `assignable`；
 - `anchor`：`gui`、`screen_center` 或 `screen`；
-- `layer`：`underlay`（原版背景下）、`background`（物品下）或 `foreground`（物品/文字上）；
+- `layer`：`underlay`、`background` 或 `foreground`；
 - `texture_type`：`full`、`region` 或 `animation`；
-- `resource_type`：`custom_textures` 默认 `resource_location`；GUI 图集 ID 显式使用 `gui_sprite`；
-- `x` / `y` / `width` / `height`：Minecraft GUI 逻辑像素，位置可为负数，尺寸可为小数。
+- `resource_type`：`resource_location`、`gui_sprite` 或 `auto`；
+- `id` / `priority` / `operation`：控制跨格式和跨资源包定义的稳定合并。
 
-区域取图、槽位选择、颜色格式、合并顺序及所有默认值见
-[`docs/resourcepack-api.md`](docs/resourcepack-api.md)。
+字段、默认值、合并顺序及错误回退见 [`docs/resourcepack-api.md`](docs/resourcepack-api.md)。
 
 ## 动画 GUI
 
@@ -203,38 +223,34 @@ assets/Kyeitk/textures/gui/inventory/
 
 ## 第三方 Mod GUI
 
-仅在目标 Mod 已加载时启用的配置应放在：
+仅在目标 Mod 已加载时启用的 v1 配置应放在：
 
 ```text
 assets/Kyeitk/compatibility/<modid>/config/inventory.json
 assets/Kyeitk/compatibility/<modid>/textures/gui/inventory.png
 ```
 
-配置可用 `screen_class` 匹配第三方界面类，或用 `container_class` 匹配容器类。完整类名仅匹配该完整
-名称；需要让基类或接口规则覆盖子类时显式写 `"class_match": "assignable"`。标题、容器和界面规则
-会按该顺序合并，后应用的界面规则可覆盖颜色等标量。兼容图片路径写为
-`compatibility/<modid>/textures/gui/inventory.png`。类名必须以实际运行版本为准，建议在多个 Mod 组合
-下完成游戏内验证。
+配置可用 `screen_class` 匹配第三方界面类，或用 `container_class` 匹配容器类。优先使用实际的
+Minecraft 1.7.10 类名；常见现代菜单别名会由平台映射表转换。需要让基类或接口规则覆盖子类时，
+显式写 `"class_match": "assignable"`。第三方 Mod 的实机兼容性仍需按具体组合验证。
 
 ## 开发者构建
 
-要求 JDK 8。首次导入旧 ForgeGradle 工程：
+要求 64 位 JDK 8。ForgeGradle 1.2 不支持使用 JDK 17/21 构建。
 
 ```powershell
-./gradlew setupDecompWorkspace
-./gradlew idea
+$env:JAVA_HOME = 'C:\Path\To\JDK8'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+.\gradlew.bat clean build
 ```
 
-构建：
-
-```powershell
-./gradlew clean build
-```
+构建脚本使用 Forge `1.7.10-10.13.4.1614-1.7.10` 和 MCP `stable_12`，并将已失效的旧 Mojang S3
+下载地址定向到官方 content-addressed URL。首次构建仍需网络。
 
 构建会输出重混淆 Shadow JAR：
 
 ```text
-build/libs/RedFoxExpand-1.8.9-0.1.0.jar
+build/libs/RedFoxExpand-1.7.10-0.1.0.jar
 ```
 
 ## 文档
@@ -249,10 +265,12 @@ build/libs/RedFoxExpand-1.8.9-0.1.0.jar
 
 ## 当前限制
 
-- 仅支持 Minecraft 1.8.9 Forge 客户端容器 GUI；
+- 仅处理 Minecraft 1.7.10 Forge 客户端的 `GuiContainer`；
 - 不支持现代 `menu_id`、按钮/widget 或玩家 3D 模型独立偏移；
 - 动画条件仅有 `always` 和 `never`；
-- 无法枚举后备文件的自定义 `IResourcePack` 不能提供大写 `assets/Kyeitk/`；
+- 旧标题/标签字段保留调用序号兼容语义，新包应使用显式 `font_rules`；
+- v1 大写目录依赖可枚举的文件夹/ZIP/JAR；自定义内存资源包应使用 native v2；
+- 可选 Mixin Hook 被其他 coremod 改写时可能降级相应图层、高亮或字体功能。
 
 ## 许可
 

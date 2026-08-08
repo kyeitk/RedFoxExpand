@@ -19,13 +19,21 @@ public final class FontRenderContext {
         CURRENT.remove();
     }
 
-    public static AdjustedText adjust(int x, int y, int color) {
+    public static AdjustedText adjust(String text, int x, int y, int color) {
         State state = CURRENT.get();
         if (state == null) {
             return null;
         }
 
         int call = state.callIndex++;
+        FontRule rule = state.modifier.matchingFontRule(text, x, y, call);
+        if (rule != null) {
+            return new AdjustedText(
+                    x + rule.xOffset,
+                    y + rule.yOffset,
+                    rule.color == null ? color : rule.color.intValue()
+            );
+        }
         if (call == 0) {
             return new AdjustedText(
                     x + state.modifier.titleXOffset,

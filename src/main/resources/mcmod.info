@@ -2,7 +2,7 @@
   {
     "modid": "redfoxexpand",
     "name": "RedFoxExpand",
-    "description": "Client-side resource-pack driven GUI modifiers for Forge 1.8.9.",
+    "description": "Client-side resource-pack driven GUI modifiers for Forge 1.7.10.",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "https://github.com/kyeitk/RedFoxExpand",

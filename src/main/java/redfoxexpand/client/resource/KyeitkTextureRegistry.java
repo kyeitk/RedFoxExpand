@@ -2,10 +2,10 @@ package redfoxexpand.client.resource;
 
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.util.ResourceLocation;
 
 import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,6 +23,7 @@ public final class KyeitkTextureRegistry implements AutoCloseable {
     private final Map<String, ResourceLocation> cached =
             new LinkedHashMap<String, ResourceLocation>();
     private final List<ResourceLocation> owned = new ArrayList<ResourceLocation>();
+    private long decodedPixels;
 
     public KyeitkTextureRegistry(TextureManager textureManager) {
         this.textureManager = textureManager;
@@ -44,9 +45,13 @@ public final class KyeitkTextureRegistry implements AutoCloseable {
         InputStream stream = null;
         try {
             stream = resource.open();
-            BufferedImage image = TextureUtil.readBufferedImage(stream);
+            BufferedImage image = ImageIO.read(stream);
             if (image == null) {
                 throw new IllegalArgumentException("Could not decode PNG: " + resource);
+            }
+            long pixels = ResourceLimits.imagePixels(image, resource.toString());
+            if (decodedPixels + pixels > ResourceLimits.MAX_GENERATION_PIXELS) {
+                throw new IllegalArgumentException("Dynamic texture generation budget exceeded");
             }
             ResourceLocation runtime = new ResourceLocation(
                     "redfoxexpand",
@@ -57,6 +62,7 @@ public final class KyeitkTextureRegistry implements AutoCloseable {
             }
             cached.put(normalized, runtime);
             owned.add(runtime);
+            decodedPixels += pixels;
             return runtime;
         } catch (Exception error) {
             throw new IllegalArgumentException("Could not load Kyeitk texture " + resource, error);
@@ -77,5 +83,6 @@ public final class KyeitkTextureRegistry implements AutoCloseable {
         }
         owned.clear();
         cached.clear();
+        decodedPixels = 0L;
     }
 }

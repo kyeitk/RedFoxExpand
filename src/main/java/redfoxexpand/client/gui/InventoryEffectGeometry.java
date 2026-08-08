@@ -3,7 +3,8 @@ package redfoxexpand.client.gui;
 /**
  * Geometry correction for {@code InventoryEffectRenderer}.
  *
- * <p>Minecraft 1.8.9 recalculates {@code guiLeft} every client tick and moves
+ * <p>Minecraft 1.7.10 recalculates {@code guiLeft} from active effects in
+ * {@code initGui} and moves
  * it when potion effects are visible. RedFoxExpand keeps the configured GUI
  * origin stable and moves the vanilla 140-pixel potion panel to the right of
  * the GUI instead.</p>

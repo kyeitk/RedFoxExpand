@@ -1,5 +1,5 @@
 {
-  "required": true,
+  "required": false,
   "minVersion": "0.7.11",
   "package": "redfoxexpand.mixin",
   "refmap": "mixins.redfoxexpand.refmap.json",
@@ -12,6 +12,6 @@
     "MixinFontRenderer"
   ],
   "injectors": {
-    "defaultRequire": 1
+    "defaultRequire": 0
   }
 }

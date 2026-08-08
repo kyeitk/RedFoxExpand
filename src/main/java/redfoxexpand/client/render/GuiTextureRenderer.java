@@ -3,8 +3,6 @@ package redfoxexpand.client.render;
 import redfoxexpand.client.gui.SpriteOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.WorldRenderer;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;
@@ -19,12 +17,22 @@ public final class GuiTextureRenderer {
             int guiTop,
             int screenWidth,
             int screenHeight,
-            boolean matrixAtGuiOrigin
+        boolean matrixAtGuiOrigin
     ) {
         long nowMillis = System.currentTimeMillis();
-        for (SpriteOverlay sprite : sprites) {
-            if (sprite.layer == layer) {
-                render(sprite, guiLeft, guiTop, screenWidth, screenHeight, matrixAtGuiOrigin, nowMillis);
+        AlphaBlendState state = null;
+        try {
+            for (SpriteOverlay sprite : sprites) {
+                if (sprite.layer == layer) {
+                    if (state == null) {
+                        state = AlphaBlendState.begin();
+                    }
+                    render(sprite, guiLeft, guiTop, screenWidth, screenHeight, matrixAtGuiOrigin, nowMillis);
+                }
+            }
+        } finally {
+            if (state != null) {
+                state.close();
             }
         }
     }
@@ -41,24 +49,19 @@ public final class GuiTextureRenderer {
         float renderX = sprite.resolveRenderX(guiLeft, screenWidth, matrixAtGuiOrigin);
         float renderY = sprite.resolveRenderY(guiTop, screenHeight, matrixAtGuiOrigin);
 
-        AlphaBlendState state = AlphaBlendState.begin();
-        try {
-            Minecraft.getMinecraft().getTextureManager().bindTexture(
-                    sprite.texture.textureAt(nowMillis)
-            );
-            drawTexturedQuad(
-                    renderX,
-                    renderY,
-                    sprite.width,
-                    sprite.height,
-                    sprite.minU(),
-                    sprite.minV(),
-                    sprite.maxU(),
-                    sprite.maxV()
-            );
-        } finally {
-            state.close();
-        }
+        Minecraft.getMinecraft().getTextureManager().bindTexture(
+                sprite.texture.textureAt(nowMillis)
+        );
+        drawTexturedQuad(
+                renderX,
+                renderY,
+                sprite.width,
+                sprite.height,
+                sprite.minU(),
+                sprite.minV(),
+                sprite.maxU(),
+                sprite.maxV()
+        );
     }
 
     private static void drawTexturedQuad(
@@ -71,13 +74,12 @@ public final class GuiTextureRenderer {
             float maxU,
             float maxV
     ) {
-        Tessellator tessellator = Tessellator.getInstance();
-        WorldRenderer renderer = tessellator.getWorldRenderer();
-        renderer.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_TEX);
-        renderer.pos(x, y + height, 0.0D).tex(minU, maxV).endVertex();
-        renderer.pos(x + width, y + height, 0.0D).tex(maxU, maxV).endVertex();
-        renderer.pos(x + width, y, 0.0D).tex(maxU, minV).endVertex();
-        renderer.pos(x, y, 0.0D).tex(minU, minV).endVertex();
+        Tessellator tessellator = Tessellator.instance;
+        tessellator.startDrawingQuads();
+        tessellator.addVertexWithUV(x, y + height, 0.0D, minU, maxV);
+        tessellator.addVertexWithUV(x + width, y + height, 0.0D, maxU, maxV);
+        tessellator.addVertexWithUV(x + width, y, 0.0D, maxU, minV);
+        tessellator.addVertexWithUV(x, y, 0.0D, minU, minV);
         tessellator.draw();
     }
 }

@@ -1,7 +1,7 @@
 package redfoxexpand.client.gui;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import redfoxexpand.platform.forge1710.Forge1710ClassAliases;
+import redfoxexpand.platform.forge1710.Forge1710ClassRemapper;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -46,14 +46,17 @@ final class ClassNameMatcher {
 
     private static boolean matchesExactClass(String configuredName, Class<?> runtimeClass) {
         boolean allowSimpleName = isSimpleName(configuredName);
-        String compatibleName = legacyCompatibilityAlias(configuredName);
+        String compatibleName = Forge1710ClassAliases.alias(configuredName);
         if (matchesRuntimeName(configuredName, runtimeClass, allowSimpleName)
                 || matchesRuntimeName(compatibleName, runtimeClass, allowSimpleName)) {
             return true;
         }
 
-        // In an obfuscated 1.8.9 client JSON still contains MCP/SRG class names.
-        String obfuscatedConfiguredName = remap(compatibleName, "unmap");
+        // In an obfuscated 1.7.10 client JSON still contains MCP/SRG class names.
+        String obfuscatedConfiguredName = Forge1710ClassRemapper.remap(
+                compatibleName,
+                "unmap"
+        );
         if (obfuscatedConfiguredName != null
                 && (obfuscatedConfiguredName.equals(runtimeClass.getName())
                 || (allowSimpleName
@@ -63,7 +66,10 @@ final class ClassNameMatcher {
 
         // Mapping the runtime name in the other direction also preserves support
         // for simple MCP class names such as "GuiCrafting" in production.
-        String deobfuscatedRuntimeName = remap(runtimeClass.getName(), "map");
+        String deobfuscatedRuntimeName = Forge1710ClassRemapper.remap(
+                runtimeClass.getName(),
+                "map"
+        );
         return deobfuscatedRuntimeName != null
                 && (compatibleName.equals(deobfuscatedRuntimeName)
                 || (allowSimpleName
@@ -82,31 +88,6 @@ final class ClassNameMatcher {
 
     private static boolean isSimpleName(String configuredName) {
         return configuredName.indexOf('.') < 0;
-    }
-
-    private static String legacyCompatibilityAlias(String configuredName) {
-        // Modern Polytone packs target the player inventory through InventoryMenu.
-        // Minecraft 1.8.9 exposes the same logical container as ContainerPlayer.
-        if ("net.minecraft.world.inventory.InventoryMenu".equals(configuredName)
-                || "InventoryMenu".equals(configuredName)) {
-            return "net.minecraft.inventory.ContainerPlayer";
-        }
-        return configuredName;
-    }
-
-    private static String remap(String className, String methodName) {
-        try {
-            Class<?> remapperClass = Class.forName(
-                    "net.minecraftforge.fml.common.asm.transformers.deobf.FMLDeobfuscatingRemapper"
-            );
-            Field instanceField = remapperClass.getField("INSTANCE");
-            Object remapper = instanceField.get(null);
-            Method method = remapperClass.getMethod(methodName, String.class);
-            Object result = method.invoke(remapper, className.replace('.', '/'));
-            return result == null ? null : result.toString().replace('/', '.');
-        } catch (Exception ignored) {
-            return null;
-        }
     }
 
     private static String simpleName(String name) {

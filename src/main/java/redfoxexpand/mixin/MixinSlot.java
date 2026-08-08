@@ -16,38 +16,32 @@ public abstract class MixinSlot implements SlotBaseAccess {
     public int yDisplayPosition;
 
     @Unique
-    private boolean redfoxexpand$baseCaptured;
+    private int redfoxexpand$appliedX;
 
     @Unique
-    private int redfoxexpand$baseX;
-
-    @Unique
-    private int redfoxexpand$baseY;
+    private int redfoxexpand$appliedY;
 
     @Override
-    public void redfoxexpand$captureBase() {
-        if (!redfoxexpand$baseCaptured) {
-            redfoxexpand$baseX = xDisplayPosition;
-            redfoxexpand$baseY = yDisplayPosition;
-            redfoxexpand$baseCaptured = true;
-        }
+    public void redfoxexpand$removeAppliedDelta() {
+        xDisplayPosition -= redfoxexpand$appliedX;
+        yDisplayPosition -= redfoxexpand$appliedY;
+        redfoxexpand$appliedX = 0;
+        redfoxexpand$appliedY = 0;
     }
 
     @Override
-    public void redfoxexpand$resetToBase() {
-        if (redfoxexpand$baseCaptured) {
-            xDisplayPosition = redfoxexpand$baseX;
-            yDisplayPosition = redfoxexpand$baseY;
-        }
+    public void redfoxexpand$recordAppliedDelta(int x, int y) {
+        redfoxexpand$appliedX += x;
+        redfoxexpand$appliedY += y;
     }
 
     @Override
     public int redfoxexpand$getBaseX() {
-        return redfoxexpand$baseCaptured ? redfoxexpand$baseX : xDisplayPosition;
+        return xDisplayPosition - redfoxexpand$appliedX;
     }
 
     @Override
     public int redfoxexpand$getBaseY() {
-        return redfoxexpand$baseCaptured ? redfoxexpand$baseY : yDisplayPosition;
+        return yDisplayPosition - redfoxexpand$appliedY;
     }
 }

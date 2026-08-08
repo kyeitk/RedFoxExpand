@@ -1,7 +1,7 @@
 package redfoxexpand.client.compat;
 
 import redfoxexpand.client.resource.ResourcePathResolver;
-import net.minecraftforge.fml.common.Loader;
+import cpw.mods.fml.common.Loader;
 
 /** Selects compatibility configs only when their target Mod is loaded. */
 public final class ModResourceAdapter {

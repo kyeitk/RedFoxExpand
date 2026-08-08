@@ -7,8 +7,8 @@ import redfoxexpand.client.render.GuiTextureRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,8 +16,8 @@ import org.apache.logging.log4j.Logger;
         modid = RedFoxExpand.MOD_ID,
         name = RedFoxExpand.NAME,
         version = RedFoxExpand.VERSION,
-        acceptedMinecraftVersions = "[1.8.9]",
-        clientSideOnly = true
+        acceptedMinecraftVersions = "[1.7.10]",
+        acceptableRemoteVersions = "*"
 )
 public final class RedFoxExpand {
 

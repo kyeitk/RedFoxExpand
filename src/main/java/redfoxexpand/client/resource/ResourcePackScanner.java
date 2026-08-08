@@ -20,7 +20,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /**
- * Minecraft 1.8.9 has no public list-resources API. This scanner discovers the
+ * Minecraft 1.7.10 has no public list-resources API. This scanner discovers the
  * enabled IResourcePack instances from the reload manager, enumerates their
  * directory/ZIP entries, then lets IResourceManager choose the winning resource.
  */

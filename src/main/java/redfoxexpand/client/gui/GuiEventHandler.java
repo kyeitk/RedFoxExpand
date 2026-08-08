@@ -2,7 +2,7 @@ package redfoxexpand.client.gui;
 
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraftforge.client.event.GuiScreenEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public final class GuiEventHandler {
 

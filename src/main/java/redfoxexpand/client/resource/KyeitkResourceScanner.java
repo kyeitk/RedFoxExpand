@@ -27,7 +27,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /**
- * Direct scanner for the physical assets/Kyeitk directory. Minecraft 1.8.9
+ * Direct scanner for the physical assets/Kyeitk directory. Minecraft 1.7.10
  * ignores uppercase resource domains, so these resources cannot be obtained
  * through IResourceManager and must be read from active pack sources.
  */
@@ -123,6 +123,11 @@ public final class KyeitkResourceScanner {
                 }
                 String relative = namespaceRoot.toURI().relativize(child.toURI()).getPath();
                 String normalized = ResourcePathResolver.normalizeRelativePath(relative);
+                if (normalized.length() > ResourceLimits.MAX_RESOURCE_PATH_LENGTH
+                        || winning.size() >= ResourceLimits.MAX_DISCOVERED_RESOURCES) {
+                    RedFoxExpand.LOGGER.warn("Kyeitk directory resource budget reached in {}", packRoot);
+                    return;
+                }
                 String entryName = packRoot.toURI().relativize(child.toURI()).getPath();
                 winning.put(normalized, new ResourceFile(packRoot, entryName, normalized));
             }
@@ -176,6 +181,11 @@ public final class KyeitkResourceScanner {
                 String relative = ResourcePathResolver.normalizeRelativePath(
                         entry.substring(namespaceEnd + 1)
                 );
+                if (relative.length() > ResourceLimits.MAX_RESOURCE_PATH_LENGTH
+                        || winning.size() >= ResourceLimits.MAX_DISCOVERED_RESOURCES) {
+                    RedFoxExpand.LOGGER.warn("Kyeitk archive resource budget reached in {}", source);
+                    return;
+                }
                 winning.put(relative, new ResourceFile(source, entry, relative));
             } catch (IllegalArgumentException error) {
                 RedFoxExpand.LOGGER.warn("Ignoring unsafe Kyeitk ZIP entry {} in {}", entry, source);
@@ -193,7 +203,8 @@ public final class KyeitkResourceScanner {
         List<IResourcePack> repositoryPacks = new ArrayList<IResourcePack>();
         try {
             ResourcePackRepository repository = Minecraft.getMinecraft().getResourcePackRepository();
-            for (ResourcePackRepository.Entry entry : repository.getRepositoryEntries()) {
+            for (Object candidate : repository.getRepositoryEntries()) {
+                ResourcePackRepository.Entry entry = (ResourcePackRepository.Entry) candidate;
                 repositoryPacks.add(entry.getResourcePack());
             }
             serverPack = repository.getResourcePackInstance();
