@@ -82,9 +82,3 @@ reload 在临时对象中完成扫描、解析与纹理验证；成功后一次�
 
 不要在同一 manifest 中混用 v2/v3 config。1.8.9 不支持 `menu_type/resource_location/mod_namespace`
 matcher；使用 class/title matcher。
-
-## 建议验证流程
-
-从最小目录开始，只加入一条 Definition 和一张自制 PNG；确认可加载后再逐步增加 Binding、Animation 与
-Behavior。每次修改后执行 F3+T，检查日志、Slot 点击区、透明度/层级和至少两种 GUI Scale。公开仓库不
-分发测试材质包、第三方图片或其 ZIP。
