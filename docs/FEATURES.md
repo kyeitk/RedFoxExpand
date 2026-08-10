@@ -51,5 +51,3 @@ Schema v3 是声明式、不可信输入协议，不支持 Java、反射、eval�
 - 面向材质包作者的 Inspector；
 - 1.8.9/1.7.10 Schema v3 回迁；
 - 完整 OpenGL/Vulkan、第三方 Screen 与生产实例交互矩阵。
-
-这些项目是路线图，不应从接口预留推断为已经实现。
