@@ -1,30 +1,160 @@
 # RedFoxExpand 材质包开发者 API
 
-本文档对应 RedFoxExpand `0.1.0`、Minecraft Java Edition `1.8.9` 和 Forge
-`11.15.1.2318`。它既是 API 参考，也是资源包迁移与排错手册。如果您要参与此项目的维护，
-后续修改解析器字段、默认值或合并顺序，必须同步维护本文档。
+本文档对应 RedFoxExpand `0.2.0`、Minecraft Java Edition `1.8.9` 和 Forge
+`11.15.1.2318`。它既是 API 参考，也是资源包迁移与排错手册。后续修改解析器字段、默认值、
+合并顺序或示例时，必须同步维护本文档。
 
-## 1. 资源包接口规范（Resource Pack Interface Specification）
+## 0.2.0 Schema 选择
 
-RedFoxExpand 通过 Minecraft 原生资源包系统扩展 GUI 自定义能力。
+RedFoxExpand 1.8.9 同时提供三条兼容入口：
 
-本接口规范定义资源包与 RedFoxExpand 之间的交互规则，包括：
+| Schema | 发现入口 | 用途 | 兼容行为 |
+|---|---|---|---|
+| v1 | `assets/Kyeitk/config/**/*.json` | 既有 1.8.9 Kyeitk 格式 | 字段与 0.1.0 保持兼容 |
+| v2 | `assets/kyeitk/redfoxexpand/index.json`，`api_version: 2` | 严格 Definition/manifest | 未知字段、错误类型直接拒绝 config |
+| v3 | 同一 manifest，`api_version: 3` | v2 + Reactive UI | v2 Sprite 必须增加稳定 `id` 才能成为 target |
 
-- 资源包目录结构；
-- 配置文件发现方式；
-- 纹理资源引用方式；
-- GUI 修改应用逻辑；
-- 资源加载与兼容原则。
+大写 v1 与小写 v2/v3 可以同时加载；小写 manifest 不会使 v1 全局失效。没有大写 v1 配置时，
+0.1.0 的旧 Polytone 回退路径仍保留。v2/v3 之间不做字段猜测或自动升级。
 
-资源包作者无需修改 Mod 文件，也无需重新编译代码。
-只需要按照本规范提供对应的 JSON 配置和资源文件，即可实现对 Minecraft GUI 的扩展。
+### Native manifest
 
-RedFoxExpand 的目标是：
+```json
+{
+  "api_version": 3,
+  "configs": ["redfoxexpand/config/inventory.json"]
+}
+```
 
-> 让资源包负责表现，让 Mod 负责能力。
+- `api_version`：必填 integer，仅允许 `2` 或 `3`；
+- `configs`：必填 string array，默认无，最多 256 项；
+- 路径必须安全、为小写 `kyeitk:redfoxexpand/config/*.json`，并从声明它的同一个资源包读取；
+- manifest 错误只隔离该 manifest；config 错误隔离该 config；纹理错误隔离对应 Definition；
+- 顶层 reload 构建失败时保留上一 immutable generation；成功时再原子替换并销毁旧运行态。
+- v2/v3 Sprite 实际首次绑定且 TextureManager 中尚无同 ID 对象时，该 `SimpleTexture` 归当前
+  RedFoxExpand native 缓存所有；下一次资源 reload 在原版遍历纹理缓存前删除该对象及 map entry，
+  因而从 v2/v3 包切到另一包不会继续请求上一包 PNG。原版或其他 Mod 已缓存的同 ID 纹理不会被认领。
 
-资源包决定 GUI 的视觉效果、布局和自定义内容；
-RedFoxExpand 负责解析配置、定位目标界面并执行渲染。
+### v2/v3 Definition 公共字段
+
+| 字段 | 类型 | 默认值 | 说明 |
+|---|---|---:|---|
+| `id` | string | 必填 | 小写 namespaced ID，如 `example:inventory` |
+| `operation` | string | `append` | `append` / `replace` / `disable` |
+| `priority` | integer | `0` | 同一 pack priority 内的 Definition 顺序 |
+| `match` | object | 必填 | 严格 matcher；对象必须恰好有一个 operator |
+| `geometry` | object | 全 0 | `x/y/width/height_offset` |
+| `slot_modifiers` | array | `[]` | Slot 选择、位移与高亮 |
+| `sprites` | array | `[]` | 贴图、UV、颜色、层、锚点、可选帧动画；v3 要求 `id` |
+| `texts` | array | `[]` | 固定/翻译文字、颜色、阴影、层与锚点 |
+| `text_rules` | array | `[]` | `title` / `player_inventory` 位移、颜色或隐藏 |
+| `bindings` | array | `[]` | 仅 v3 |
+| `animations` | array | `[]` | 仅 v3 Property Animation，不是纹理帧动画 |
+| `behaviors` | array | `[]` | 仅 v3 |
+
+候选应用顺序为 `pack priority -> definition priority -> source path -> array index`。`replace`/`disable`
+先按稳定 ID 移除较低候选；`disable` 本身不进入 active 列表。
+
+### 1.8.9 matcher
+
+可用 operator：
+
+```text
+all / any / not
+exact_screen_class / assignable_screen_class
+exact_screen_simple_class / assignable_screen_simple_class
+exact_menu_class / assignable_menu_class
+exact_menu_simple_class / assignable_menu_simple_class
+screen_title_key / screen_title_text
+```
+
+full class matcher 必须写全限定类名，simple matcher 必须显式使用 `*_simple_class`。现代
+`net.minecraft.world.inventory.InventoryMenu` 兼容映射到 1.8.9 的
+`net.minecraft.inventory.ContainerPlayer`。1.8.9 没有对应注册表数据，因此 `menu_type`、
+`resource_location`、`mod_namespace` 会在重载时明确报错，不会静默为 false。
+
+### Texture object 与帧动画
+
+```json
+{
+  "texture": {
+    "type": "pack_resource",
+    "location": "textures/gui/character.png"
+  },
+  "animation": {
+    "frame_duration_ms": 100,
+    "loop": true,
+    "condition": "always",
+    "missing_frame": "use_default",
+    "frames": [{
+      "texture": {"type":"pack_resource","location":"textures/gui/frame_0.png"},
+      "duration_ms": 120
+    }]
+  }
+}
+```
+
+`texture.type` 为 `resource_location`、`gui_sprite` 或 `pack_resource`。1.8.9 没有 GUI atlas，
+`gui_sprite` 兼容解析为 `textures/gui/sprites/<path>.png`。帧 `duration_ms` 默认继承
+`frame_duration_ms`（100），范围 1..600000；`condition` 为 `always/never`；`missing_frame` 为
+`use_default/skip/disable`。资源在 reload 阶段校验 PNG 签名、单边 4096、单图/动画/generation 像素预算；
+render tick 不读文件或解析 JSON。
+
+### Schema v3 Reactive API
+
+Schema v3 的完整变量、表达式语法、Binding、Event、Property、Animation、Behavior、Action、优先级、预算和
+生命周期见 [`SCHEMA_V3.md`](SCHEMA_V3.md)。公开扩展摘要：
+
+- `bindings[]`：`target`、`property`、`value`，numeric property 可选 `smoothing_ms`，默认 `0`；
+- `animations[]`：稳定 `id`、`duration_ms`、`loop`（默认 false）、property tracks/keyframes；
+- `behaviors[]`：`on.event`，health event 可选 `every`，`mode` 仅 `coalesce`，`if` 默认 `true`；
+- action：`play_animation`、`stop_animation`、`set_visible`、`set_alpha`；
+- property：`visible`、`alpha`、`translate_x/y`、`scale_x/y`、`rotation_z`；
+- Runtime Context 包含 player、screen、gui 与 `mouse.x/y/gui_x/gui_y/left_down/right_down`。
+
+Reactive target 目前只能是同一 Definition 中的 v3 Sprite ID。表达式、事件、Action、Property 或 target
+引用错误会在 reload 阶段拒绝 config；运行时表达式错误会按来源 key 限流记录（每个 GUI 同 key 一次、最多 64 个），只回退该次属性求值并保留基础值。所有 transform
+均为临时合成，不修改基础 x/y/width/height；动画停止、GUI 关闭或 generation 替换后返回基础值。
+
+启用 Schema v3 的最小步骤：
+
+1. 将 manifest 与 config 的 `api_version` 都设为 `3`；
+2. 为 config 中每个 Sprite 添加 Definition 内唯一的 `id`；
+3. 用 `bindings` 描述持续状态，用 Definition-level `animations` 描述瞬时属性动画；
+4. 用 `behaviors` 监听 Event 并按顺序执行 Action；
+5. F3+T 后查看日志；未知变量、函数、target、animation 或平台不支持的 matcher 会明确拒绝 config。
+
+```json
+{
+  "api_version": 3,
+  "definitions": [{
+    "id": "example:reactive_inventory",
+    "match": {"exact_menu_class":"net.minecraft.inventory.ContainerPlayer"},
+    "sprites": [{
+      "id":"fire",
+      "texture":{"type":"pack_resource","location":"textures/gui/fire.png"},
+      "anchor":"gui", "x":80, "y":20, "width":32, "height":32
+    }],
+    "bindings": [
+      {"target":"fire","property":"visible","value":"player.is_burning"},
+      {"target":"fire","property":"rotation_z",
+       "value":"clamp((mouse.gui_x - gui.width / 2) * 0.05, -8, 8)","smoothing_ms":120}
+    ]
+  }]
+}
+```
+
+1.8.9 0.2.0 的新增响应式能力包括玩家/GUI/鼠标状态、严格预编译表达式、数值平滑、health/burning/
+`screen.opened` Event、Behavior/Action，以及平移、透明度、缩放、旋转 Property Animation。完整合成顺序、
+事件 payload、预算和安全边界以 [`SCHEMA_V3.md`](SCHEMA_V3.md) 为准。
+
+以下各节保留 v1 API 的完整字段参考。
+
+## 1. v1 兼容契约
+
+0.2.0 继续保留 0.1.0 的大写 Kyeitk 目录和字段语义，包括 `screen_center`、`underlay`、浮点尺寸、
+整图/区域纹理及目录帧动画。已有 v1 材质包不需要为了使用 0.2.0 而迁移到 v2/v3；只有在需要严格
+manifest 合并或响应式能力时才建议使用小写 native 入口。
 
 ## 2. 文件位置与加载
 
@@ -515,17 +645,29 @@ minecraft:textures/gui/sprites/inventory.png
 ## 14. 当前限制
 
 - 仅作用于客户端 Minecraft 1.8.9 Forge 容器 GUI；
-- 不支持现代 `menu_id`；
 - 不支持按钮/widget 修改；
-- 动画条件当前只支持 `always/never`；不支持表达式、鼠标条件和动画坐标；
+- v1 目录帧动画条件仍只支持 `always/never`；Schema v3 的状态表达式和属性动画应使用
+  `bindings/animations/behaviors`；
 - 不支持独立调整玩家 3D 模型位置；
-- 不检查图片像素尺寸是否与 JSON 声明一致；
+- native v2/v3 检查 PNG/像素预算，但不会要求 JSON 声明尺寸等于 PNG 原始尺寸；
+- `menu_type`、`resource_location`、`mod_namespace` matcher 在 1.8.9 明确不可用；
+- Reactive target 仅限 v3 Sprite；
 - 无法取得后备文件的自定义 `IResourcePack` 不能提供大写 Kyeitk 目录；
 - 游戏内视觉效果、不同 GUI 缩放及与其他 Mod 的组合效果需由使用者验证。
 
-## 15. Java 扩展接口
+## 15. 发布前验证清单
 
-这些接口面向后续 RedFoxExpand 模块复用，使用 Java 8；0.1.0 阶段尚不承诺跨大版本二进制稳定性：
+1. 启用材质包并打开目标容器；
+2. 检查所有图片透明背景、位置、缩放和层级；
+3. 检查原版槽位与鼠标点击区域一致；
+4. 测试至少两种 GUI 缩放和窗口尺寸；
+5. 保持 GUI 打开并执行 `F3+T`，确认不累计漂移；
+6. 禁用材质包并重载，确认附加内容完全消失；
+7. 查看日志，确认没有 `Invalid Kyeitk GUI config` 或纹理缺失警告。
+
+## 16. Java 扩展接口
+
+这些接口面向后续 RedFoxExpand 模块复用，使用 Java 8；0.2.0 尚不承诺跨大版本二进制稳定性：
 
 | 接口 | 方法 | 用途与默认行为 |
 |---|---|---|
@@ -537,7 +679,12 @@ minecraft:textures/gui/sprites/inventory.png
 | `client.render.AnimationPlaybackCondition` | `shouldPlay()` | 动画选帧前判断是否播放；内置配置映射为 `always/never` |
 
 `GuiConfigLoader.load(source, reader, resolver)` 按单个 JSON 文件原子返回不可变 `GuiDefinition` 列表。
+
+0.2.0 新增的 Minecraft 无关公开包为 `redfoxexpand.reactive.*`，包括 Expression、EventDetector、Binding、
+BehaviorEngine、AnimationController、PropertyPipeline、RuntimeSnapshot 和 RuntimeVariables；
+`redfoxexpand.platform.forge189.*` 只负责把 1.8.9 状态转换成纯 RuntimeSnapshot。资源包协议兼容不等于
+Java 二进制 API 承诺，外部 Mod 不应依赖 client/mixin 内部类。
 实现方若遇到非法路径、缺失资源或不支持的条件，应抛出 `IllegalArgumentException`；上层加载器会记录
 来源并跳过整份文件。扩展解析器不得在渲染线程逐帧执行 IO。
 
-文档最后同步日期：2026-08-08。
+文档最后同步日期：2026-08-10。

@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import redfoxexpand.client.compat.LegacyResourceAdapter;
 import redfoxexpand.client.config.GuiTextureResolver;
 import redfoxexpand.client.render.GuiTexture;
+import redfoxexpand.core.DefinitionCandidate;
+import redfoxexpand.core.GuiDefinition;
 import net.minecraft.util.ResourceLocation;
 
 import java.util.Locale;
@@ -91,8 +93,11 @@ public final class SpriteOverlay {
     public final float textureWidth;
     public final float textureHeight;
     public final boolean fullTexture;
+    public final int color;
     public final Layer layer;
     public final Anchor anchor;
+    public final String elementId;
+    public final DefinitionCandidate reactiveScope;
 
     private SpriteOverlay(
             GuiTexture texture,
@@ -108,8 +113,11 @@ public final class SpriteOverlay {
             float textureWidth,
             float textureHeight,
             boolean fullTexture,
+            int color,
             Layer layer,
-            Anchor anchor
+            Anchor anchor,
+            String elementId,
+            DefinitionCandidate reactiveScope
     ) {
         this.texture = texture;
         this.x = x;
@@ -124,8 +132,11 @@ public final class SpriteOverlay {
         this.textureWidth = textureWidth;
         this.textureHeight = textureHeight;
         this.fullTexture = fullTexture;
+        this.color = color;
         this.layer = layer;
         this.anchor = anchor;
+        this.elementId = elementId;
+        this.reactiveScope = reactiveScope;
     }
 
     public static SpriteOverlay parse(JsonObject json) {
@@ -206,8 +217,29 @@ public final class SpriteOverlay {
                 textureWidth,
                 textureHeight,
                 fullTexture,
+                0xFFFFFFFF,
                 layer,
-                anchor
+                anchor,
+                null,
+                null
+        );
+    }
+
+    public static SpriteOverlay fromNative(
+            GuiDefinition.Sprite sprite,
+            GuiTexture texture,
+            DefinitionCandidate scope
+    ) {
+        return new SpriteOverlay(
+                texture,
+                (float) sprite.x(), (float) sprite.y(), (float) sprite.z(),
+                (float) sprite.u(), (float) sprite.v(),
+                (float) sprite.width(), (float) sprite.height(),
+                (float) sprite.sourceWidth(), (float) sprite.sourceHeight(),
+                (float) sprite.textureWidth(), (float) sprite.textureHeight(),
+                sprite.fullTexture(), sprite.color(),
+                Layer.valueOf(sprite.layer().name()), Anchor.valueOf(sprite.anchor().name()),
+                sprite.id(), scope
         );
     }
 
@@ -282,6 +314,10 @@ public final class SpriteOverlay {
 
     public boolean isForeground() {
         return layer == Layer.FOREGROUND;
+    }
+
+    public boolean isNative() {
+        return reactiveScope != null;
     }
 
     public float resolveRenderX(int guiLeft, int screenWidth, boolean matrixAtGuiOrigin) {

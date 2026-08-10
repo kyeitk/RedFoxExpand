@@ -18,4 +18,5 @@ public final class GuiEventHandler {
             manager.onPostInit((GuiContainer) event.gui);
         }
     }
+
 }

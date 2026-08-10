@@ -23,6 +23,7 @@ hs_err_pid*
 # Local-only test/resource-pack material. Some fixtures contain third-party
 # assets whose licences forbid redistribution.
 src/test/
+examples/
 test/
 tests/
 example-resourcepack/
@@ -32,6 +33,14 @@ example-animated-resourcepack.zip
 reference-pack-case/
 migration-staging/
 tools/
+docs/TESTING.md
+docs/ARCHITECTURE.md
+docs/SCHEMA_V3_PORT_REPORT.md
+docs/RESOURCE_ARCHITECTURE_AUDIT.md
+docs/REFACTOR_RECOMMENDATIONS.md
+docs/REFACTOR_PLAN.md
+docs/HARDCODE_AUDIT.md
+docs/COMPATIBILITY_AUDIT.md
 *.zip
 §*/
 

@@ -1,75 +1,68 @@
-# RedFoxExpand 功能说明
+# 功能状态（Minecraft 1.8.9）
 
-本文记录 `0.1.0` 的实际功能、实现入口和验证边界。README 面向普通用户与材质包作者；本页面向维护者
-和兼容开发者。
+本文只描述 `RedFoxExpand-1.8.9` 0.2.0 当前已经实现的公开能力与明确边界。
 
-## 功能矩阵
+## v1：Legacy Compatibility Protocol
 
-| 功能 | 状态 | 说明 |
-|---|---|---|
-| 固定 Kyeitk 目录 | 已实现 | 扫描 `assets/Kyeitk/`，兼容小写 `kyeitk` 物理目录 |
-| 文件夹/ZIP/Mod JAR | 已实现 | 按已启用资源包优先级建立最高优先级路径索引 |
-| GUI 目标匹配 | 已实现 | 标题 → 容器 → 界面由低到高合并；类目标支持 `exact/assignable` |
-| GUI 几何修改 | 已实现 | 位置、逻辑宽高、标题与标签偏移 |
-| 槽位修改 | 已实现 | 索引/范围/坐标/类名筛选，类名支持 `exact/assignable`，并修改位置与高亮颜色 |
-| 玩家背包药水布局 | 已实现 | 药水不改变 GUI 原点；列表位于 GUI 右侧并在窄屏钳制到可见区域 |
-| 自定义贴图 | 已实现 | `full`、`region`、显式资源类型、三种锚点和三种渲染层 |
-| RGBA / Alpha | 已实现 | 标准 Alpha 混合并恢复调用前 OpenGL 状态 |
-| 动画贴图 | 已实现（基础） | 帧顺序、时长、循环、`always/never`、默认图、缺帧策略 |
-| F3+T 热重载 | 已实现 | 重建不可变快照、释放旧纹理并刷新当前容器 GUI |
-| 第三方 Mod 目录 | 已实现 | 仅在 `<modid>` 已加载时应用 compatibility 配置 |
-| 旧 Polytone 配置 | 已实现（回退） | 仅在没有适用 Kyeitk 配置时加载 |
-| 复杂动画条件 | Planned | 表达式、鼠标悬停、游戏状态条件尚未实现 |
-| 动态坐标/尺寸 | Planned | 当前位置和尺寸在配置解析后固定 |
-| 按钮/widget | Planned | 0.1.0 只处理容器 GUI、槽位、贴图和文字 |
-| 玩家模型独立偏移 | Planned | 扩展 GUI 时需由材质设计适配模型窗口 |
+- 继续扫描大写 `assets/Kyeitk/` 文件夹、ZIP 材质包和可枚举 Mod JAR；
+- 支持 GUI geometry、Slot 位移/高亮、静态/区域贴图、旧目录帧动画、文字和三层渲染；
+- 标题、容器和界面规则按低到高优先级合并，类目标支持 `exact` / `assignable`；
+- 玩家背包在有/无药水效果时保持相同原点，药水列表显示在 GUI 右侧；
+- 没有可用 v1 配置时保留旧 Polytone GUI modifier 回退。
 
-## 加载与渲染流程
+## Schema v2：Strict Definition Protocol
 
-```text
-资源加载 / F3+T
-  -> 扫描 Kyeitk 物理目录
-  -> 选择最高优先级 JSON/PNG
-  -> 严格解析配置并缓存纹理/动画帧
-  -> 原子替换 GUI modifier 快照
-  -> 刷新当前 GuiContainer
+- 使用小写 `assets/kyeitk/redfoxexpand/index.json`，只读取声明 manifest 的同一资源包 config；
+- 严格 matcher、Definition ID、priority、`append` / `replace` / `disable`；
+- geometry、Slot、Sprite、Text 与 TextRule；
+- 整图/区域纹理、ARGB/Alpha、三种锚点、三层渲染与内联纹理帧动画；
+- 路径、JSON、PNG、像素与 reload generation 预算；
+- F3+T 原子切换 immutable generation，失败时保留上一代；
+- 切换 native v2/v3 材质包时，仅清理由本 Mod 首次创建的旧 `SimpleTexture` 缓存。
 
-每帧绘制
-  -> underlay
-  -> 原版背景
-  -> background
-  -> 槽位与物品
-  -> 原版标题/标签
-  -> foreground
-  -> 自定义文字
-```
+## Schema v3：Reactive UI Protocol
 
-逐帧绘制不执行文件扫描、JSON 解析或 PNG 解码。
+- Definition 内唯一的稳定 Sprite ID；
+- Runtime Context：health/max health、burning、sneaking、sprinting、armor、food、air、level、experience、
+  screen/gui、鼠标绝对/GUI 相对坐标及左右键持续状态；
+- Java 8 预编译表达式，支持比较、布尔、算术、括号和 `min/max/clamp/abs/lerp/hypot`；
+- `visible`、`alpha`、`translate_x/y`、`scale_x/y`、`rotation_z` Binding，数值属性可选平滑；
+- health decreased/increased、started/stopped burning 和一次性的 `screen.opened` Event；
+- ON + IF + ACTIONS Behavior，以及 health Event 的 `every` + `coalesce`；
+- play/stop animation、set visible/alpha Action；
+- 平移、透明度、缩放、旋转 Property Animation，支持 `linear` / `smoothstep` 与 restart/ignore；
+- Base → Binding → Layout → Animation → Runtime Override 属性管线，不回写基础坐标和尺寸；
+- capability、表达式/行为/动画/实例预算与每 GUI 限频诊断；
+- 每个 `GuiContainer` 独占运行时；Forge END client tick 推进状态，关闭、玩家变化、resize/init 与 F3+T
+  清理旧 animation、smoother、override 和 `every` 累加器。
 
-## 核心模块
+完整字段、示例和错误语义见 [Schema v3 规范](SCHEMA_V3.md)。
 
-| 模块 | 职责 |
-|---|---|
-| `client/resource/KyeitkResourceScanner` | 物理目录、ZIP、资源优先级和安全索引 |
-| `client/resource/ResourcePathResolver` | 路径校验、静态/动画资源解析 |
-| `client/resource/KyeitkTextureRegistry` | PNG 解码、运行时纹理注册与释放 |
-| `client/config/GuiConfigLoader` | 严格 JSON 解析与文件级原子失败 |
-| `client/gui/GuiModifierManager` | 快照、目标匹配、合并和界面刷新 |
-| `client/render/GuiTextureRenderer` | 分层四边形绘制 |
-| `client/render/AnimatedGuiRenderer` | 只访问已缓存帧的时间选帧 |
-| `client/render/AlphaBlendState` | Alpha 混合设置和 OpenGL 状态恢复 |
-| `mixin/MixinGuiContainer` | GUI 几何和渲染阶段接入 |
-| `mixin/MixinContainer` / `MixinSlot` | 槽位基础坐标捕获与幂等重应用 |
+## 1.8.9 平台差异
 
-## 错误隔离
+- 1.8.9 没有现代注册表化菜单/GUI 标识，`menu_type`、`resource_location`、`mod_namespace` matcher
+  会被明确拒绝；应使用 screen/menu class、simple class 或 title matcher；
+- `net.minecraft.world.inventory.InventoryMenu` 仅作为兼容别名映射到
+  `net.minecraft.inventory.ContainerPlayer`，其他现代类名不会被猜测；
+- 原版没有 Recipe Book，因此配方书跟随不适用于此版本；
+- 渲染继续使用 1.8.9 OpenGL 桥，并在局部绘制后恢复颜色、混合、Alpha、深度、纹理、scissor 和矩阵状态。
 
-以下错误会记录来源并跳过整份配置，不会让游戏循环继续持有半有效状态：
+## 安全与回退
 
-- JSON 语法、字段类型、类匹配/资源类型枚举值或颜色非法；
-- 绝对路径、路径穿越或不允许的资源位置；
-- PNG 缺失、损坏或无法解码；
-- 动画帧、时长、条件或缺帧策略非法。
+Schema v3 是声明式、不可信输入协议，不支持 Java、反射、eval、脚本、命令、网络、文件系统、任意函数、
+无界循环或递归。配置错误按 config 隔离，纹理错误按 Definition 隔离；顶层 reload 失败时保留上一
+generation。热路径不进行文件/ZIP/JSON/PNG/表达式解析。
 
-若新快照没有命中当前 GUI，则恢复原版尺寸、槽位和渲染行为。
+## 尚未实现
 
-文档最后同步日期：2026-08-08。
+- HUD API、Widget 与通用 Components；
+- Semantic Slot，以及 text/Slot reactive target；
+- Texture State；
+- width、height、color reactive binding；
+- 自定义旋转枢轴、玩家 3D 模型独立偏移与 3D/网格形变；
+- custom variable/event、Timer、User Function、loop/recursion；
+- `every.mode=repeat`；
+- 面向材质包作者的 Inspector；
+- 完整第三方 Mod、不同 GUI Scale、F3+T 视觉结果和实际 OpenGL 交互矩阵。
+
+这些项目是路线图，不应从接口预留推断为已经实现。

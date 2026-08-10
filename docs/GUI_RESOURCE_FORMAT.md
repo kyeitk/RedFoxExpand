@@ -1,7 +1,11 @@
 # GUI 资源格式
 
-本页说明固定 `assets/Kyeitk/` 架构中的静态 GUI、动画 GUI 和 Alpha 图片要求。完整的目标、槽位、
-文字和合并字段见 [`resourcepack-api.md`](resourcepack-api.md)。
+本页主要说明 legacy v1 `assets/Kyeitk/` 架构中的静态 GUI、目录动画和 Alpha 图片要求。0.2.0 native
+v2/v3 改用小写 manifest、`{type, location}` texture object 与可选 inline `animation`；其完整字段见
+[`resourcepack-api.md`](resourcepack-api.md)，Reactive Property Animation 见 [`SCHEMA_V3.md`](SCHEMA_V3.md)。
+
+纹理帧 animation 与 Schema v3 Property Animation 是两套正交功能：前者选择 PNG，后者只合成
+visible/alpha/translate/scale/rotation，禁止用纹理帧修改基础布局。
 
 ## 1. 静态 GUI
 
@@ -158,5 +162,15 @@ assets/Kyeitk/compatibility/examplemod/textures/gui/inventory.png
 - 绝对路径、路径穿越、缺失/损坏 PNG；
 - `region` 未提供有效纹理尺寸。
 
-若没有其他有效配置命中当前 GUI，界面保持原版。错误不会保留上一次已经禁用或已经删除的 Kyeitk
-快照。
+若没有其他有效配置命中当前 GUI，界面保持原版。单文件错误按 config/Definition 隔离；reload 顶层失败
+不会发布半成品，而是保留上一个 immutable generation。成功 reload 后已删除或禁用的定义不会残留。
+
+## 6. 项目测试方式
+
+Gradle `test` 阶段在临时目录中生成小型 v1 静态/动画材质包，并解析仓库内 v3 示例：严格 JSON、2×2 RGBA PNG、动画描述和
+ZIP 条目均由测试代码创建。测试会验证配置解析、引用齐全、静态图含完整/部分/零 Alpha、动画帧尺寸
+一致、缓存选帧和缺帧策略。
+
+测试还验证逻辑尺寸扩展不会被传给原版背景纹理取样，防止超过 256 UV 后在右侧/底部重复绘制，并
+验证 `InventoryEffectRenderer` 下一 tick 重算原点后的水平补偿。公开仓库不分发本地测试材质包、
+参考底包或第三方图片；游戏内视觉、GUI 缩放和资源重载仍由用户验证。

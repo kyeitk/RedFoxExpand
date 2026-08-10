@@ -9,6 +9,8 @@ import redfoxexpand.client.gui.SlotModifier;
 import redfoxexpand.client.gui.SpriteOverlay;
 import redfoxexpand.client.gui.TextOverlay;
 import net.minecraft.util.ResourceLocation;
+import redfoxexpand.core.DefinitionCandidate;
+import redfoxexpand.reactive.ReactiveDefinition;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,9 +54,13 @@ public final class GuiDefinition {
     public final int labelYOffset;
     public final Integer titleColor;
     public final Integer labelColor;
+    public final boolean titleHidden;
+    public final boolean labelHidden;
     public final List<SlotModifier> slotModifiers;
     public final List<SpriteOverlay> sprites;
     public final List<TextOverlay> texts;
+    public final DefinitionCandidate nativeCandidate;
+    public final ReactiveDefinition reactive;
 
     private GuiDefinition(
             ResourceLocation source,
@@ -71,9 +77,13 @@ public final class GuiDefinition {
             int labelYOffset,
             Integer titleColor,
             Integer labelColor,
+            boolean titleHidden,
+            boolean labelHidden,
             List<SlotModifier> slotModifiers,
             List<SpriteOverlay> sprites,
-            List<TextOverlay> texts
+            List<TextOverlay> texts,
+            DefinitionCandidate nativeCandidate,
+            ReactiveDefinition reactive
     ) {
         this.source = source;
         this.targetType = targetType;
@@ -89,9 +99,13 @@ public final class GuiDefinition {
         this.labelYOffset = labelYOffset;
         this.titleColor = titleColor;
         this.labelColor = labelColor;
+        this.titleHidden = titleHidden;
+        this.labelHidden = labelHidden;
         this.slotModifiers = Collections.unmodifiableList(slotModifiers);
         this.sprites = Collections.unmodifiableList(sprites);
         this.texts = Collections.unmodifiableList(texts);
+        this.nativeCandidate = nativeCandidate;
+        this.reactive = reactive == null ? ReactiveDefinition.EMPTY : reactive;
     }
 
     static GuiDefinition parse(
@@ -137,9 +151,53 @@ public final class GuiDefinition {
                 JsonSupport.integer(json, "label_y_offset", 0),
                 JsonSupport.color(json, "title_color"),
                 JsonSupport.color(json, "label_color"),
+                false,
+                false,
                 slots,
                 sprites,
-                texts
+                texts,
+                null,
+                ReactiveDefinition.EMPTY
+        );
+    }
+
+    public static GuiDefinition fromNative(
+            DefinitionCandidate candidate,
+            List<SpriteOverlay> sprites
+    ) {
+        redfoxexpand.core.GuiDefinition nativeDefinition = candidate.definition();
+        redfoxexpand.core.GuiDefinition.Geometry geometry = nativeDefinition.geometry();
+        List<SlotModifier> slots = new ArrayList<SlotModifier>();
+        for (redfoxexpand.core.GuiDefinition.SlotRule rule : nativeDefinition.slotRules()) {
+            slots.add(SlotModifier.fromNative(rule));
+        }
+        List<TextOverlay> texts = new ArrayList<TextOverlay>();
+        for (redfoxexpand.core.GuiDefinition.TextOverlay text : nativeDefinition.texts()) {
+            texts.add(TextOverlay.fromNative(text));
+        }
+        int titleX = 0, titleY = 0, labelX = 0, labelY = 0;
+        Integer titleColor = null, labelColor = null;
+        boolean titleHidden = false, labelHidden = false;
+        for (redfoxexpand.core.GuiDefinition.TextRule rule : nativeDefinition.textRules()) {
+            if (rule.selector() == redfoxexpand.core.GuiDefinition.TextSelector.TITLE) {
+                titleX += rule.xOffset(); titleY += rule.yOffset();
+                if (rule.color() != null) titleColor = rule.color();
+                titleHidden |= rule.hidden();
+            } else {
+                labelX += rule.xOffset(); labelY += rule.yOffset();
+                if (rule.color() != null) labelColor = rule.color();
+                labelHidden |= rule.hidden();
+            }
+        }
+        return new GuiDefinition(
+                new ResourceLocation(candidate.sourcePath()),
+                TargetType.CONTAINER_CLASS,
+                "", ClassMatchMode.EXACT,
+                geometry.xOffset(), geometry.yOffset(), geometry.widthOffset(), geometry.heightOffset(),
+                titleX, titleY, labelX, labelY, titleColor, labelColor,
+                titleHidden, labelHidden,
+                slots, new ArrayList<SpriteOverlay>(sprites), texts,
+                candidate, nativeDefinition.reactive()
         );
     }
 

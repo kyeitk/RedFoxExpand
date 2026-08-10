@@ -9,7 +9,8 @@
     "MixinSlot",
     "MixinGuiContainer",
     "MixinInventoryEffectRenderer",
-    "MixinFontRenderer"
+    "MixinFontRenderer",
+    "MixinTextureManager"
   ],
   "injectors": {
     "defaultRequire": 1

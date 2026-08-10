@@ -112,7 +112,7 @@ public final class ResourcePathResolver implements GuiTextureResolver {
                 defaultTexture,
                 definition.loop,
                 condition,
-                System.currentTimeMillis()
+                redfoxexpand.platform.forge189.Forge189Clock.INSTANCE.nowMillis()
         );
     }
 

@@ -18,16 +18,8 @@ public final class ResourceReloadHandler implements IResourceManagerReloadListen
         try {
             guiModifiers.reload(resourceManager);
         } catch (Throwable error) {
-            try {
-                guiModifiers.clearAndRefresh();
-            } catch (Throwable fallbackError) {
-                RedFoxExpand.LOGGER.error(
-                        "Failed to clear GUI modifiers after a reload error",
-                        fallbackError
-                );
-            }
             RedFoxExpand.LOGGER.error(
-                    "Failed to reload GUI modifiers; the previous snapshot was cleared to avoid stale state",
+                    "Failed to reload GUI modifiers; the previous immutable generation remains active",
                     error
             );
         }

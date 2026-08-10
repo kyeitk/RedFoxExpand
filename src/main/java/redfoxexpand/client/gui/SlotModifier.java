@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
+import redfoxexpand.core.GuiDefinition;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -73,6 +74,17 @@ public final class SlotModifier {
                 JsonSupport.integer(json, "y_offset", 0),
                 color,
                 JsonSupport.color(json, "color_2")
+        );
+    }
+
+    public static SlotModifier fromNative(GuiDefinition.SlotRule rule) {
+        String targetClass = rule.targetClass();
+        return new SlotModifier(
+                new LinkedHashSet<Integer>(rule.slots()),
+                rule.targetX(), rule.targetY(), targetClass,
+                rule.classMatchMode() == GuiDefinition.ClassMatchMode.ASSIGNABLE
+                        ? ClassMatchMode.ASSIGNABLE : ClassMatchMode.EXACT,
+                rule.xOffset(), rule.yOffset(), rule.highlightColor(), rule.highlightColor2()
         );
     }
 

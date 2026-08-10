@@ -24,6 +24,10 @@ public abstract class MixinFontRenderer {
     ) {
         FontRenderContext.AdjustedText adjusted = FontRenderContext.adjust(x, y, color);
         if (adjusted != null) {
+            if (adjusted.hidden) {
+                callback.setReturnValue(0);
+                return;
+            }
             callback.setReturnValue(((FontRenderer) (Object) this).drawString(
                     text,
                     (float) adjusted.x,
