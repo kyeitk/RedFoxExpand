@@ -164,13 +164,3 @@ assets/Kyeitk/compatibility/examplemod/textures/gui/inventory.png
 
 若没有其他有效配置命中当前 GUI，界面保持原版。单文件错误按 config/Definition 隔离；reload 顶层失败
 不会发布半成品，而是保留上一个 immutable generation。成功 reload 后已删除或禁用的定义不会残留。
-
-## 6. 项目测试方式
-
-Gradle `test` 阶段在临时目录中生成小型 v1 静态/动画材质包，并解析仓库内 v3 示例：严格 JSON、2×2 RGBA PNG、动画描述和
-ZIP 条目均由测试代码创建。测试会验证配置解析、引用齐全、静态图含完整/部分/零 Alpha、动画帧尺寸
-一致、缓存选帧和缺帧策略。
-
-测试还验证逻辑尺寸扩展不会被传给原版背景纹理取样，防止超过 256 UV 后在右侧/底部重复绘制，并
-验证 `InventoryEffectRenderer` 下一 tick 重算原点后的水平补偿。公开仓库不分发本地测试材质包、
-参考底包或第三方图片；游戏内视觉、GUI 缩放和资源重载仍由用户验证。
