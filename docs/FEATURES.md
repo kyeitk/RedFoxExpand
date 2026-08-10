@@ -64,5 +64,4 @@ generation。热路径不进行文件/ZIP/JSON/PNG/表达式解析。
 - `every.mode=repeat`；
 - 面向材质包作者的 Inspector；
 - 完整第三方 Mod、不同 GUI Scale、F3+T 视觉结果和实际 OpenGL 交互矩阵。
-
-这些项目是路线图，不应从接口预留推断为已经实现。
+  
