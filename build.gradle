@@ -44,6 +44,21 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+tasks.register('compileReactiveJava8', JavaCompile) {
+    description = 'Verifies that the Minecraft-independent Schema v3 reactive core remains Java 8 source-compatible.'
+    source = fileTree('src/main/java') {
+        include 'redfoxexpand/reactive/**/*.java'
+    }
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('classes/reactiveJava8')
+    options.release = 8
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('compileReactiveJava8')
+}
+
 java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_25

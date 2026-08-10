@@ -10,13 +10,21 @@ public record ResolvedModifier(
         List<GuiDefinition.SlotRule> slotRules,
         List<GuiDefinition.Sprite> sprites,
         List<GuiDefinition.TextOverlay> texts,
-        List<GuiDefinition.TextRule> textRules
+        List<GuiDefinition.TextRule> textRules,
+        List<DefinitionCandidate> matchedDefinitions
 ) {
     public ResolvedModifier {
         slotRules = List.copyOf(slotRules);
         sprites = List.copyOf(sprites);
         texts = List.copyOf(texts);
         textRules = List.copyOf(textRules);
+        matchedDefinitions = List.copyOf(matchedDefinitions);
+    }
+
+    public ResolvedModifier(GuiDefinition.Geometry geometry, List<GuiDefinition.SlotRule> slotRules,
+                            List<GuiDefinition.Sprite> sprites, List<GuiDefinition.TextOverlay> texts,
+                            List<GuiDefinition.TextRule> textRules) {
+        this(geometry, slotRules, sprites, texts, textRules, List.of());
     }
 
     public static ResolvedModifier resolve(List<DefinitionCandidate> active, GuiContext context) {
@@ -25,8 +33,10 @@ public record ResolvedModifier(
         List<GuiDefinition.Sprite> sprites = new ArrayList<>();
         List<GuiDefinition.TextOverlay> texts = new ArrayList<>();
         List<GuiDefinition.TextRule> textRules = new ArrayList<>();
+        List<DefinitionCandidate> matched = new ArrayList<>();
         for (DefinitionCandidate candidate : active) {
             if (!candidate.matcher().matches(context)) continue;
+            matched.add(candidate);
             GuiDefinition definition = candidate.definition();
             x = safeAdd(x, definition.geometry().xOffset(), "x_offset");
             y = safeAdd(y, definition.geometry().yOffset(), "y_offset");
@@ -40,12 +50,13 @@ public record ResolvedModifier(
         sprites.sort(Comparator.comparing(GuiDefinition.Sprite::layer)
                 .thenComparingDouble(GuiDefinition.Sprite::z));
         return new ResolvedModifier(new GuiDefinition.Geometry(x, y, width, height),
-                slots, sprites, texts, textRules);
+                slots, sprites, texts, textRules, matched);
     }
 
     public boolean isEmpty() {
         return geometry.equals(GuiDefinition.Geometry.ZERO) && slotRules.isEmpty()
-                && sprites.isEmpty() && texts.isEmpty() && textRules.isEmpty();
+                && sprites.isEmpty() && texts.isEmpty() && textRules.isEmpty()
+                && matchedDefinitions.stream().allMatch(candidate -> candidate.definition().reactive().isEmpty());
     }
 
     private static int safeAdd(int left, int right, String field) {

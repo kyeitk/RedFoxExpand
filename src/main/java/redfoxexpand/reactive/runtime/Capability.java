@@ -1,0 +1,31 @@
+package redfoxexpand.reactive.runtime;
+
+/** Cross-version feature identifiers used during Schema v3 reload validation. */
+public enum Capability {
+    PLAYER_HEALTH,
+    PLAYER_MAX_HEALTH,
+    PLAYER_BURNING,
+    PLAYER_SNEAKING,
+    PLAYER_SPRINTING,
+    PLAYER_ARMOR,
+    PLAYER_FOOD,
+    PLAYER_AIR,
+    PLAYER_LEVEL,
+    PLAYER_EXPERIENCE,
+    SCREEN_SIZE,
+    GUI_POSITION,
+    GUI_SIZE,
+    MOUSE_POSITION,
+    MOUSE_BUTTONS,
+    PROPERTY_VISIBLE,
+    PROPERTY_ALPHA,
+    PROPERTY_TRANSLATE,
+    PROPERTY_SCALE,
+    PROPERTY_ROTATION,
+    EVENT_HEALTH,
+    EVENT_BURNING,
+    EVENT_SCREEN_LIFECYCLE,
+    ACTION_ANIMATION,
+    ACTION_SET_VISIBLE,
+    ACTION_SET_ALPHA
+}

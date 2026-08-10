@@ -3,6 +3,33 @@
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。Minecraft 26.2 版本使用
 `vX.Y.Z-mc26.2` Git Tag。
 
+## [0.2.0-mc26.2] - 2026-08-10
+
+### Added
+
+- 新增与 Schema v2 并存的严格 Schema v3 Reactive UI Protocol；v2 材质包无需迁移；
+- 新增 Definition-local Sprite ID、预编译表达式、类型检查和 `min/max/clamp/abs/lerp/hypot` 白名单函数；
+- 新增玩家、屏幕、GUI、鼠标位置与左右键 Runtime Context；非有限鼠标坐标安全回退；
+- 新增 health、burning 与 `screen.opened` 事件，以及带 `every` / `coalesce` 的 Behavior；
+- 新增 `visible`、`alpha`、`translate_x/y`、`scale_x/y`、`rotation_z` Binding 和数值平滑；
+- 新增 Definition-level Property Animation、`linear` / `smoothstep` 插值，以及播放、停止、可见性和
+  透明度 Action；
+- 新增 Base → Binding → Layout → Animation → Runtime Override 的无漂移属性管线；
+- 新增 capability、表达式/动画实例预算、限频诊断和按 Screen 隔离的响应式生命周期；
+- 新增 Java 8 源兼容的独立 Reactive Core，以及 Schema v3 公开规范和使用示例；
+- README 新增项目设计哲学、目标架构与优先路线图。
+
+### Changed
+
+- 配方书展开/收起与 resize 在候选不变时保留当前动画、事件累计器和响应式状态；
+- F3+T、候选集合变化、玩家切换或 Screen 重开会创建全新 runtime，避免跨 generation 泄漏状态；
+- 公开功能清单与未实现列表按 Schema v3 MVP 的实际边界更新。
+
+### Release
+
+- `26.2` 分支继续只发布主源码、客户端源码、构建脚本、公开文档与发布 JAR；
+- 自动测试代码、测试资源、示例材质包、内部审计/实施文档和受限制第三方素材不进入公开上传版。
+
 ## [0.1.0-mc26.2] - 2026-08-09
 
 ### Added

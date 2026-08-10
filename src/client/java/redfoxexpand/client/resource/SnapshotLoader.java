@@ -13,6 +13,8 @@ import redfoxexpand.core.DefinitionRegistry;
 import redfoxexpand.core.GuiDefinition;
 import redfoxexpand.core.ResourceLimits;
 import redfoxexpand.core.SchemaV2Parser;
+import redfoxexpand.core.SchemaV3Parser;
+import redfoxexpand.reactive.runtime.Capability;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -23,6 +25,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -40,7 +43,8 @@ public final class SnapshotLoader {
     private static final AtomicLong NEXT_GENERATION = new AtomicLong();
     private static final Set<String> MANIFEST_FIELDS = Set.of("api_version", "configs");
 
-    private final SchemaV2Parser schema = new SchemaV2Parser();
+    private final SchemaV2Parser schemaV2 = new SchemaV2Parser();
+    private final SchemaV3Parser schemaV3 = new SchemaV3Parser(EnumSet.allOf(Capability.class));
 
     public ResourceSnapshot load(ResourceManager manager) {
         MutableReport report = new MutableReport();
@@ -56,7 +60,8 @@ public final class SnapshotLoader {
             Resource manifest = manifests.get(sourcePriority);
             String pack = manifest.sourcePackId();
             try {
-                for (Identifier config : parseManifest(manifest, pack, report)) {
+                ParsedManifest parsedManifest = parseManifest(manifest, pack, report);
+                for (Identifier config : parsedManifest.configs()) {
                     report.configs++;
                     Optional<Resource> resource = resourceFromPack(manager.getResourceStack(config), pack);
                     if (resource.isEmpty()) {
@@ -64,6 +69,7 @@ public final class SnapshotLoader {
                         continue;
                     }
                     loadConfig(manager, resource.get(), config, pack, sourcePriority,
+                            parsedManifest.apiVersion(),
                             candidates, textures, validated, reloadPixels, report);
                 }
             } catch (Exception error) {
@@ -78,7 +84,7 @@ public final class SnapshotLoader {
         return new ResourceSnapshot(NEXT_GENERATION.incrementAndGet(), active, textures, report.freeze());
     }
 
-    private List<Identifier> parseManifest(Resource resource, String pack, MutableReport report) throws IOException {
+    private ParsedManifest parseManifest(Resource resource, String pack, MutableReport report) throws IOException {
         byte[] bytes = readLimited(resource.open(), ResourceLimits.MAX_JSON_BYTES, INDEX.toString());
         JsonElement parsed = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
         if (!parsed.isJsonObject()) throw new IllegalArgumentException("manifest root must be an object");
@@ -86,8 +92,17 @@ public final class SnapshotLoader {
         Set<String> unknown = new HashSet<>(json.keySet());
         unknown.removeAll(MANIFEST_FIELDS);
         if (!unknown.isEmpty()) throw new IllegalArgumentException("unknown manifest field(s): " + unknown);
-        if (!json.has("api_version") || json.get("api_version").getAsInt() != 2) {
-            throw new IllegalArgumentException("manifest api_version must be 2");
+        if (!json.has("api_version") || !json.get("api_version").isJsonPrimitive()
+                || !json.get("api_version").getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException("manifest api_version must be integer 2 or 3");
+        }
+        double rawApiVersion = json.get("api_version").getAsDouble();
+        if (!Double.isFinite(rawApiVersion) || rawApiVersion != Math.rint(rawApiVersion)) {
+            throw new IllegalArgumentException("manifest api_version must be integer 2 or 3");
+        }
+        int apiVersion = (int) rawApiVersion;
+        if (apiVersion != 2 && apiVersion != 3) {
+            throw new IllegalArgumentException("manifest api_version must be 2 or 3");
         }
         JsonArray configs = json.getAsJsonArray("configs");
         if (configs == null || configs.size() > ResourceLimits.MAX_MANIFEST_CONFIGS) {
@@ -112,11 +127,12 @@ public final class SnapshotLoader {
         if (result.size() > ResourceLimits.MAX_CONFIGS_PER_PACK) {
             throw new IllegalArgumentException("pack config count exceeds " + ResourceLimits.MAX_CONFIGS_PER_PACK);
         }
-        return List.copyOf(result);
+        return new ParsedManifest(apiVersion, List.copyOf(result));
     }
 
     private void loadConfig(ResourceManager manager, Resource resource, Identifier location,
-                            String pack, int sourcePriority, List<DefinitionCandidate> candidates,
+                            String pack, int sourcePriority, int apiVersion,
+                            List<DefinitionCandidate> candidates,
                             Map<GuiDefinition.TextureSpec, Identifier> textures,
                             Map<Identifier, Long> validated, long[] reloadPixels,
                             MutableReport report) {
@@ -124,12 +140,14 @@ public final class SnapshotLoader {
              InputStreamReader reader = new InputStreamReader(
                      new ByteArrayInputStream(readLimited(stream, ResourceLimits.MAX_JSON_BYTES, location.toString())),
                      StandardCharsets.UTF_8)) {
-            List<SchemaV2Parser.ParsedDefinition> parsed = schema.parse(reader, location + " from " + pack);
+            List<SchemaV2Parser.ParsedDefinition> parsed = apiVersion == 2
+                    ? schemaV2.parse(reader, location + " from " + pack)
+                    : schemaV3.parse(reader, location + " from " + pack);
             for (int index = 0; index < parsed.size(); index++) {
                 SchemaV2Parser.ParsedDefinition definition = parsed.get(index);
                 try {
                     validateDefinition(manager, definition.definition(), textures, validated, reloadPixels, report);
-                    candidates.add(new DefinitionCandidate(definition.id(), 2, pack, sourcePriority,
+                    candidates.add(new DefinitionCandidate(definition.id(), apiVersion, pack, sourcePriority,
                             location.toString(), index, definition.matcher(), definition.operation(),
                             definition.priority(), definition.definition()));
                 } catch (Exception error) {
@@ -265,6 +283,9 @@ public final class SnapshotLoader {
     }
 
     private record ImageDimensions(int width, int height) {
+    }
+
+    private record ParsedManifest(int apiVersion, List<Identifier> configs) {
     }
 
     private static String rootMessage(Throwable error) {

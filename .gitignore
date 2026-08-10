@@ -27,6 +27,9 @@ examples/
 docs/TESTING.md
 docs/MIGRATION_AUDIT.md
 docs/ARCHITECTURE.md
+docs/SCHEMA_V3_IMPLEMENTATION_REPORT.md
+docs/SCHEMA_V3_IMPLEMENTATION_AUDIT.md
+docs/SCHEMA_V3_BACKPORT_PLAN.md
 test/
 tests/
 example-resourcepack/

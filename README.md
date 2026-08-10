@@ -8,9 +8,9 @@
 [![Status](https://img.shields.io/badge/Status-Development-yellow.svg)](#)
 
 RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **26.2 Fabric** 客户端 Mod。它允许材质包作者通过
-原生小写资源域、Schema v2 JSON 配置和现代渲染管线修改容器 GUI，而不必修改或重新编译 Mod。
+原生小写资源域、Schema v2/v3 JSON 配置和现代渲染管线修改容器 GUI，而不必修改或重新编译 Mod。
 
-- 当前版本：`0.1.0`（Git Tag：`v0.1.0-mc26.2`）
+- 当前版本：`0.2.0`（Git Tag：`v0.2.0-mc26.2`）
 - Minecraft：`26.2`
 - Fabric Loader：`0.19.3`
 - Fabric API：`0.156.0+26.2`
@@ -29,26 +29,57 @@ RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **26.2 Fabric** 客户�
 - 支持整图、区域 UV、三种显式资源类型、三种锚点和三种渲染层；
 - `gui` 锚点、破限纹理和 Slot 会跟随配方书展开/收起及窗口重新布局同步移动；
 - 支持 PNG Alpha、显式文本、语义标题/玩家背包标签规则及时间动画；
+- Schema v3 与 v2 并存：不需要响应式能力的旧 v2 材质包无需迁移；
+- Schema v3 提供稳定 Sprite ID、严格表达式引擎和每 tick Runtime Context；
+- 支持玩家、屏幕、GUI、鼠标与按键状态，以及 health/burning/screen 生命周期事件；
+- 支持 `visible`、`alpha`、平移、缩放、旋转绑定和数值平滑；
+- 支持属性动画、`linear` / `smoothstep` 插值、行为条件与安全动作；
+- Reactive Core 独立保持 Java 8 源兼容，平台层仍使用 Minecraft 26.2 所需的 Java 25；
 - F3+T 采用不可变 generation 原子切换，成功后统一释放上一代引用；
 - 全部 GUI 绘制使用 `GuiGraphicsExtractor` 与 `RenderPipelines`，不直接调用 OpenGL/LWJGL。
 
-### Planned
+### 下一步
 
-- 表达式、鼠标悬停等复杂动画播放条件；
-- 动态坐标和动态尺寸；
-- 按钮/widget 修改；
-- 玩家 3D 模型独立偏移；
+- HUD API 与 Widget/Component；
+- Semantic Slot，以及 text/Slot 的响应式 target；
+- width、height、color、Texture State 和自定义旋转枢轴；
+- 自定义变量/事件、Timer、User Function 与 `every.mode=repeat`；
+- 面向材质包作者的 Inspector；
+- 将 Schema v3 的共同能力回迁至 1.8.9 与 1.7.10；
 - 更完整的 OpenGL/Vulkan、第三方 Screen 和生产实例兼容矩阵。
 
 完整状态和边界见 [`docs/FEATURES.md`](docs/FEATURES.md)。
+
+## 项目方向
+
+RedFoxExpand 的核心设计哲学是：
+
+> **让资源包负责表现，让 Mod 负责能力。**
+
+资源包使用 Texture、Layout、Animation、Color、Visibility、Style 与 Theme 描述界面；Mod 负责 State、
+Rendering、Events、Input、Compatibility、Security 与 Runtime。目标不是简单支持更多 PNG，而是让材质包作者
+只使用 PNG、JSON、Animation、Expression 和 Components，也能制作动态背包、动态 HUD、RPG/PvP/科幻界面、
+角色面板、响应式 GUI 与第三方 Mod UI。
+
+```text
+Resource Pack API ─┐
+                   ├─> Expression Engine -> UI Definition -> HUD / GUI / Components
+Runtime Context  ──┘                                      -> Layout Engine
+                                                          -> Animation Engine
+                                                          -> Render Pipeline -> Minecraft
+```
+
+项目将从“材质包辅助 Mod”继续发展为 **Minecraft Resource Pack UI Framework**，并最终形成可复用的
+**Minecraft Resource Pack UI Runtime**。当前优先级依次为完善 Expression Engine、建设 HUD API、实现
+Semantic Slot，以及为材质包作者提供 Inspector；已完成和未实现边界以本文及功能文档为准。
 
 ## 安装
 
 1. 安装 Minecraft 26.2、Fabric Loader `0.19.3` 和 Fabric API `0.156.0+26.2`；
 2. 从 [GitHub Releases](https://github.com/kyeitk/RedFoxExpand/releases) 下载
-   `RedFoxExpand-26.2-0.1.0.jar`；
+   `RedFoxExpand-26.2-0.2.0.jar`；
 3. 将 JAR 放入 Minecraft 实例的 `mods/` 目录；
-4. 启动游戏并启用符合 Schema v2 的 RedFoxExpand 材质包。
+4. 启动游戏并启用符合 Schema v2 或 v3 的 RedFoxExpand 材质包。
 
 Mod 不要求服务端安装。建议在新增或修改配置后执行 F3+T。
 
@@ -133,6 +164,34 @@ assets/kyeitk/redfoxexpand/textures/gui/inventory.png
 ```
 
 启用材质包并打开玩家背包即可查看。修改资源后按 F3+T，成功 reload 后新 generation 一次性生效。
+
+## Schema v3 响应式界面
+
+需要根据玩家或界面状态动态改变 Sprite 时，将 manifest 与 config 的 `api_version` 都设为 `3`，并为每个
+Sprite 增加 Definition 内唯一的 `id`。下面的配置会在玩家着火时显示火焰，并让图标平滑跟随鼠标横坐标：
+
+```json
+{
+  "api_version": 3,
+  "definitions": [{
+    "id": "example:reactive_inventory",
+    "match": {"exact_menu_class":"net.minecraft.world.inventory.InventoryMenu"},
+    "sprites": [{
+      "id": "fire",
+      "texture": {"type":"pack_resource","location":"textures/gui/fire.png"},
+      "anchor": "gui", "x": 80, "y": 20, "width": 32, "height": 32
+    }],
+    "bindings": [
+      {"target":"fire","property":"visible","value":"player.is_burning"},
+      {"target":"fire","property":"translate_x","value":"mouse.gui_x - 80","smoothing_ms":120}
+    ]
+  }]
+}
+```
+
+v3 表达式在 reload 时预编译并严格校验，不支持脚本、反射、文件、网络或任意函数调用。完整 Runtime
+Context、表达式语法、属性、事件、动画、行为、预算及迁移说明见
+[`docs/SCHEMA_V3.md`](docs/SCHEMA_V3.md)。
 
 ## 完整配置示例
 
@@ -248,13 +307,14 @@ $env:Path = "$env:JAVA_HOME\bin;$env:Path"
 Gradle `9.5.1`。发布 JAR：
 
 ```text
-build/libs/RedFoxExpand-26.2-0.1.0.jar
+build/libs/RedFoxExpand-26.2-0.2.0.jar
 ```
 
 ## 文档
 
 - [功能状态与实现边界](docs/FEATURES.md)
 - [材质包开发者 API](docs/resourcepack-api.md)
+- [Schema v3 响应式 UI 协议](docs/SCHEMA_V3.md)
 - [GUI 静态、动画与 Alpha 格式](docs/GUI_RESOURCE_FORMAT.md)
 - [材质包目录与迁移规范](docs/RESOURCE_PACK_STRUCTURE.md)
 - [任意位置自定义贴图](docs/custom-textures.md)
@@ -263,11 +323,13 @@ build/libs/RedFoxExpand-26.2-0.1.0.jar
 
 ## 当前限制
 
-- 仅处理 Minecraft 26.2 Fabric 客户端的容器 GUI；
+- 当前仅处理 Minecraft 26.2 Fabric 客户端的容器 GUI，HUD 与 Widget 尚未实现；
 - 不扫描旧 `assets/Kyeitk/`，旧版配置必须迁移至原生小写 Schema v2；
 - `imageWidth/imageHeight` 保持原版 final 值，扩展尺寸使用独立逻辑 geometry；
-- 动画条件仅有 `always` 和 `never`；
-- 不支持按钮/widget 或玩家 3D 模型独立偏移；
+- Sprite 纹理帧动画条件仍只有 `always` 和 `never`；动态条件请使用 Schema v3；
+- Schema v3 尚不支持 width/height/color 绑定、Texture State、自定义旋转枢轴、text/Slot target、
+  自定义变量/事件、Timer、User Function、循环/递归或 `every.mode=repeat`；
+- 不支持按钮/widget 或玩家 3D 模型独立偏移，旧版本尚未完成 v3 回迁；
 - OpenGL/Vulkan 已确认启动与资源 reload，但完整 GUI/交互矩阵仍需逐项验证。
 
 ## 许可

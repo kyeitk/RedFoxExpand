@@ -1,21 +1,31 @@
 package redfoxexpand.core;
 
+import redfoxexpand.reactive.ReactiveDefinition;
+
 import java.util.List;
 import java.util.Set;
 
-/** Immutable Schema v2 definition body. */
+/** Immutable strict Definition body shared by Schema v2 and additive Schema v3. */
 public record GuiDefinition(
         Geometry geometry,
         List<SlotRule> slotRules,
         List<Sprite> sprites,
         List<TextOverlay> texts,
-        List<TextRule> textRules
+        List<TextRule> textRules,
+        ReactiveDefinition reactive
 ) {
     public GuiDefinition {
         slotRules = List.copyOf(slotRules);
         sprites = List.copyOf(sprites);
         texts = List.copyOf(texts);
         textRules = List.copyOf(textRules);
+        if (reactive == null) reactive = ReactiveDefinition.EMPTY;
+    }
+
+    /** Schema v2 compatibility constructor: v2 definitions have no reactive extension. */
+    public GuiDefinition(Geometry geometry, List<SlotRule> slotRules, List<Sprite> sprites,
+                         List<TextOverlay> texts, List<TextRule> textRules) {
+        this(geometry, slotRules, sprites, texts, textRules, ReactiveDefinition.EMPTY);
     }
 
     public record Geometry(int xOffset, int yOffset, int widthOffset, int heightOffset) {
@@ -90,8 +100,18 @@ public record GuiDefinition(
             boolean fullTexture,
             int color,
             Layer layer,
-            Anchor anchor
-    ) { }
+            Anchor anchor,
+            String id
+    ) {
+        /** Schema v2 compatibility constructor: v2 sprites intentionally have no stable element ID. */
+        public Sprite(TextureSpec texture, Animation animation, double x, double y, double z,
+                      double u, double v, double width, double height, double sourceWidth,
+                      double sourceHeight, double textureWidth, double textureHeight,
+                      boolean fullTexture, int color, Layer layer, Anchor anchor) {
+            this(texture, animation, x, y, z, u, v, width, height, sourceWidth, sourceHeight,
+                    textureWidth, textureHeight, fullTexture, color, layer, anchor, null);
+        }
+    }
 
     public record TextOverlay(
             String text,

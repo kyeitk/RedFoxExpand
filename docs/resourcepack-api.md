@@ -1,7 +1,82 @@
-# RedFoxExpand Resource-Pack API v2（Minecraft 26.2 Fabric）
+# RedFoxExpand Resource-Pack API（Minecraft 26.2 Fabric）
 
-本文是 26.2 项目的正式公开资源规范。v2 字段严格校验：未知字段、错误类型、非有限数字、越界值或路径
-穿越都会产生带来源的错误，不会静默回退到拼写相近的字段。
+本文是 26.2 项目的资源发现入口与 Schema v2 基础 Definition 规范。v2/v3 均严格校验：未知字段、错误
+类型、非有限数字、越界值或路径穿越都会产生带来源的错误，不会静默回退到拼写相近的字段。
+
+## 0. Protocol 关系
+
+```text
+v1 = Legacy Compatibility Protocol（26.2 不作为主协议读取）
+v2 = Strict Definition / Manifest Protocol
+v3 = v2 + Stable Element ID + Reactive UI Runtime
+```
+
+不需要响应式行为的资源包继续使用 v2；需要 RuntimeContext、Expression、Binding、Event、Behavior、Action
+与 Property Animation 时使用 v3。v3 完整规范、默认值、预算、错误/回退和示例见
+[SCHEMA_V3.md](SCHEMA_V3.md)。
+
+### Schema v3 鼠标状态入口
+
+26.2 当前公开以下严格变量：
+
+```text
+mouse.x / mouse.y                 number，GUI-scaled 屏幕绝对坐标
+mouse.gui_x / mouse.gui_y         number，相对实时 gui.x/gui.y
+mouse.left_down / mouse.right_down boolean，当前 tick 持续按下状态
+```
+
+示例：
+
+```json
+{
+  "bindings": [
+    {"target":"cursor_hint","property":"visible","value":"mouse.left_down || mouse.right_down"},
+    {"target":"cursor_hint","property":"translate_x","value":"mouse.gui_x"},
+    {"target":"cursor_hint","property":"translate_y","value":"mouse.gui_y"}
+  ]
+}
+```
+
+坐标不做 GUI 边界 clamp；按键未按住时值为 `false`，且不是 click Event。26.2 native 坐标为非有限值时绝对坐标回退为 `0`，
+GUI 相对坐标再以 `0 - gui.x/y` 计算。缺少 `MOUSE_POSITION` 或 `MOUSE_BUTTONS` capability 的旧平台会在
+reload 拒绝引用对应变量的 v3 config；不会静默模拟。完整类型和兼容性见
+[Schema v3 Runtime Context](SCHEMA_V3.md#7-runtime-context)。
+
+### Schema v3 变换、平滑与 Screen 生命周期
+
+26.2 还支持数值属性 `scale_x`、`scale_y`（Base `1`，最终范围 0..8）、`rotation_z`（Base `0`，单位为度，
+最终范围 -360..360）以及无 payload 的 `screen.opened` Event。缩放与旋转均围绕 Sprite 中心完成，不修改
+配置中的 `x/y/width/height`。数值 Binding 可声明 `smoothing_ms`（默认 `0`，0..600000）；非零时以该值
+作为时间常数做 render-time 指数平滑，初次值立即建立，之后的 tick 目标变化不会逐帧跳变。boolean Binding
+禁止声明该字段。表达式另提供 `hypot(x,y)`，动画轨道可选 `linear` 或 `smoothstep`：
+
+```json
+{
+  "animations": [{
+    "id": "bounce",
+    "duration_ms": 800,
+    "loop": true,
+    "tracks": [
+      {"property":"scale_x","interpolation":"smoothstep","keyframes":[{"time_ms":0,"value":1},{"time_ms":400,"value":0.98},{"time_ms":800,"value":1}]},
+      {"property":"scale_y","interpolation":"smoothstep","keyframes":[{"time_ms":0,"value":1},{"time_ms":400,"value":1.03},{"time_ms":800,"value":1}]}
+    ]
+  }],
+  "bindings": [{
+    "target":"character", "property":"rotation_z",
+    "value":"clamp((mouse.x - screen.width / 2) * 0.01, -4, 4)",
+    "smoothing_ms":180
+  }],
+  "behaviors": [{
+    "on":{"event":"screen.opened"},
+    "actions":[{"type":"play_animation","target":"character","animation":"bounce"}]
+  }]
+}
+```
+
+`screen.opened` 在该 Screen 的 reactive runtime 创建时触发一次；普通 resize/Recipe Book 布局更新不会重复
+触发，F3+T 或关闭重开造成 runtime 重建时会重新触发。缺少 `PROPERTY_SCALE`、`PROPERTY_ROTATION` 或
+`EVENT_SCREEN_LIFECYCLE` capability 的平台会在 reload 明确拒绝相关配置。完整合成、错误和回退语义见
+[Schema v3 Property](SCHEMA_V3.md#15-property) 与 [Lifecycle](SCHEMA_V3.md#20-lifecycle)。
 
 ## 1. 发现协议
 
@@ -40,14 +115,14 @@ assets/kyeitk/redfoxexpand/index.json
 
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---:|---|
-| `api_version` | integer | 必填 | 必须为 `2` |
+| `api_version` | integer | 必填 | `2` 或 `3`；它引用的 config 必须使用相同版本 |
 | `configs` | string[] | 必填 | 最多 256 个；必须位于 `kyeitk:redfoxexpand/config/` 且以 `.json` 结尾 |
 
 Mod 使用 `ResourceManager.getResourceStack` 读取所有 manifest，并只从同一个 `sourcePackId` 取得该
 manifest 指向的配置。文件夹包、ZIP 包、Mod 内置资源与服务端资源包因此共用同一条原生路径，不依赖
 物理文件。
 
-## 2. 配置根与 Definition
+## 2. Schema v2 配置根与 Definition
 
 ```json
 {
@@ -267,6 +342,9 @@ Config 语法错误按文件隔离；Definition 的纹理/动画错误按 defini
 reload 未能形成候选 generation 时保留上一代。成功 prepare 后一次原子切换 N，再释放 N-1 引用。26.2
 使用原生资源纹理，因此 Mod 不创建/持有动态 GPU texture。
 
+Schema v3 在这些 v2 预算之上增加 binding/behavior/property-animation/expression/active-instance 预算；精确
+数值和超限行为见 [Schema v3 Budget](SCHEMA_V3.md#21-budget)。
+
 ## 10. 兼容性与 v1 迁移
 
 26.2 不扫描 `assets/Kyeitk/`，也不接受旧 flat v1 JSON 作为主协议。迁移步骤：
@@ -282,3 +360,6 @@ reload 未能形成候选 generation 时保留上一代。成功 prepare 后一�
 9. 使用 namespaced definition ID 与 operation。
 
 旧 1.8.9/1.7.10 项目继续维护各自协议；新项目不会用反射、ZIP 扫描或猜测式路径模拟旧行为。
+
+从 v2 升级 v3 时保留所有基础字段，只需同步 manifest/config version、为 v3 Sprite 添加稳定 ID，并按需
+增加 `bindings`、Definition-level `animations` 与 `behaviors`。不要把 Sprite 内纹理帧 `animation` 改名。

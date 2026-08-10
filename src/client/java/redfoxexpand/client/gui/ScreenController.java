@@ -1,6 +1,7 @@
 package redfoxexpand.client.gui;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -12,8 +13,12 @@ import redfoxexpand.core.GuiDefinition;
 import redfoxexpand.core.ResolvedModifier;
 import redfoxexpand.mixin.client.AbstractContainerScreenAccessor;
 import redfoxexpand.platform.fabric262.Fabric262GuiContextFactory;
+import redfoxexpand.platform.fabric262.Fabric262Clock;
+import redfoxexpand.platform.fabric262.Fabric262RuntimeStateProvider;
+import redfoxexpand.reactive.runtime.RuntimeSnapshot;
 
 import java.util.IdentityHashMap;
+import java.util.ArrayList;
 import java.util.Map;
 
 /** Owns per-screen lifecycle, transforms and Fabric Screen API hooks. */
@@ -51,6 +56,22 @@ public final class ScreenController {
             GuiRuntimeState removed = states.remove(screen);
             if (removed != null) restore(removed);
         });
+    }
+
+    /** Fabric END_CLIENT_TICK entry: the only place that advances snapshots and derives events. */
+    public void clientTick(Minecraft client) {
+        for (GuiRuntimeState state : new ArrayList<>(states.values())) {
+            refresh(state);
+            RuntimeSnapshot runtimeSnapshot = Fabric262RuntimeStateProvider.snapshot(client,
+                    state.baseContext, state.modifier.geometry(), state.leftDelta, state.topDelta);
+            if (state.playerIdentity != client.player || runtimeSnapshot == null) {
+                state.playerIdentity = client.player;
+                state.reactiveRuntime = new ReactiveScreenRuntime(state.reactiveCandidates, state.diagnostics);
+                state.reactiveRuntime.initialize(runtimeSnapshot, Fabric262Clock.INSTANCE.nowMillis());
+                continue;
+            }
+            state.reactiveRuntime.tick(runtimeSnapshot, Fabric262Clock.INSTANCE.nowMillis());
+        }
     }
 
     public void renderForeground(Screen screen, GuiGraphicsExtractor graphics,
@@ -110,11 +131,24 @@ public final class ScreenController {
         ResourceSnapshot snapshot = SnapshotService.current();
         GuiContext context = Fabric262GuiContextFactory.create(state.screen, state.currentGuiResource);
         ResolvedModifier modifier = ResolvedModifier.resolve(snapshot.definitions(), context);
+        boolean runtimeChanged = state.snapshot == null
+                || state.snapshot.generation() != snapshot.generation()
+                || !state.reactiveCandidates.equals(modifier.matchedDefinitions());
         state.snapshot = snapshot;
         state.baseContext = context;
         state.modifier = modifier;
+        if (runtimeChanged) {
+            state.reactiveCandidates = modifier.matchedDefinitions();
+            state.reactiveRuntime = new ReactiveScreenRuntime(state.reactiveCandidates, state.diagnostics);
+            state.playerIdentity = Minecraft.getInstance().player;
+        }
         applyGeometry(state, modifier.geometry());
         SlotTransformController.apply(state, modifier, context);
+        if (runtimeChanged) {
+            state.reactiveRuntime.initialize(Fabric262RuntimeStateProvider.snapshot(Minecraft.getInstance(),
+                    context, modifier.geometry(), state.leftDelta, state.topDelta),
+                    Fabric262Clock.INSTANCE.nowMillis());
+        }
     }
 
     private static void restore(GuiRuntimeState state) {

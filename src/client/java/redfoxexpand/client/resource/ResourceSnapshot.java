@@ -18,7 +18,7 @@ public final class ResourceSnapshot implements AutoCloseable {
     public ResourceSnapshot(long generation, List<DefinitionCandidate> definitions,
                             Map<GuiDefinition.TextureSpec, Identifier> textures, LoadReport report) {
         this.generation = generation;
-        this.startedAtMillis = System.currentTimeMillis();
+        this.startedAtMillis = System.nanoTime() / 1_000_000L;
         this.definitions = List.copyOf(definitions);
         this.textures = Map.copyOf(textures);
         this.report = report;

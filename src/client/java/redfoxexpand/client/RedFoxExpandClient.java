@@ -2,6 +2,7 @@ package redfoxexpand.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackType;
@@ -21,6 +22,7 @@ public final class RedFoxExpandClient implements ClientModInitializer {
                 new RedFoxReloadListener()
         );
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> ScreenController.INSTANCE.attach(screen));
+        ClientTickEvents.END_CLIENT_TICK.register(ScreenController.INSTANCE::clientTick);
         LOGGER.info("RedFoxExpand initialized for Minecraft 26.2 Fabric");
     }
 }

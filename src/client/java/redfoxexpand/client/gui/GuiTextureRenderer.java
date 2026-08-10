@@ -7,6 +7,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.Slot;
 import redfoxexpand.core.GuiDefinition;
+import redfoxexpand.platform.fabric262.Fabric262Clock;
+import redfoxexpand.reactive.property.FinalRenderProperties;
 
 import java.util.List;
 
@@ -18,7 +20,7 @@ final class GuiTextureRenderer {
     static void renderLayer(GuiRuntimeState state, GuiGraphicsExtractor graphics,
                             GuiDefinition.Layer layer, int mouseX, int mouseY) {
         if (state.modifier == null || state.snapshot == null) return;
-        long now = System.currentTimeMillis();
+        long now = Fabric262Clock.INSTANCE.nowMillis();
         for (GuiDefinition.Sprite sprite : state.modifier.sprites()) {
             if (sprite.layer() == layer) renderSprite(state, graphics, sprite, now);
         }
@@ -30,24 +32,44 @@ final class GuiTextureRenderer {
 
     private static void renderSprite(GuiRuntimeState state, GuiGraphicsExtractor graphics,
                                      GuiDefinition.Sprite sprite, long now) {
+        FinalRenderProperties properties = state.reactiveRuntime == null
+                ? FinalRenderProperties.BASE : state.reactiveRuntime.properties(sprite, now);
+        if (!properties.isVisible() || properties.getAlpha() <= 0.0D) return;
         Identifier texture = textureAt(state, sprite, now);
         if (texture == null) return;
-        int x = Math.round((float) (anchorX(state, sprite.anchor()) + sprite.x()));
-        int y = Math.round((float) (anchorY(state, sprite.anchor()) + sprite.y()));
-        int width = Math.max(1, Math.round((float) sprite.width()));
-        int height = Math.max(1, Math.round((float) sprite.height()));
-        if (sprite.texture().type() == GuiDefinition.ResourceType.GUI_SPRITE) {
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, texture, x, y, width, height, sprite.color());
-        } else if (sprite.fullTexture()) {
-            graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0F, 0.0F,
-                    width, height, width, height, width, height, sprite.color());
-        } else {
-            graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y,
-                    (float) sprite.u(), (float) sprite.v(), width, height,
-                    Math.max(1, Math.round((float) sprite.sourceWidth())),
-                    Math.max(1, Math.round((float) sprite.sourceHeight())),
-                    Math.max(1, Math.round((float) sprite.textureWidth())),
-                    Math.max(1, Math.round((float) sprite.textureHeight())), sprite.color());
+        double baseX = anchorX(state, sprite.anchor()) + sprite.x() + properties.getTranslateX();
+        double baseY = anchorY(state, sprite.anchor()) + sprite.y() + properties.getTranslateY();
+        int width = Math.max(0, Math.round((float) (sprite.width() * properties.getScaleX())));
+        int height = Math.max(0, Math.round((float) (sprite.height() * properties.getScaleY())));
+        if (width == 0 || height == 0) return;
+        int x = Math.round((float) (baseX + (sprite.width() - width) * 0.5D));
+        int y = Math.round((float) (baseY + (sprite.height() - height) * 0.5D));
+        int color = multiplyAlpha(sprite.color(), properties.getAlpha());
+        boolean rotated = properties.getRotationZ() != 0.0D;
+        if (rotated) {
+            float centerX = x + width * 0.5F;
+            float centerY = y + height * 0.5F;
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(centerX, centerY);
+            graphics.pose().rotate((float) Math.toRadians(properties.getRotationZ()));
+            graphics.pose().translate(-centerX, -centerY);
+        }
+        try {
+            if (sprite.texture().type() == GuiDefinition.ResourceType.GUI_SPRITE) {
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, texture, x, y, width, height, color);
+            } else if (sprite.fullTexture()) {
+                graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0F, 0.0F,
+                        width, height, width, height, width, height, color);
+            } else {
+                graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y,
+                        (float) sprite.u(), (float) sprite.v(), width, height,
+                        Math.max(1, Math.round((float) sprite.sourceWidth())),
+                        Math.max(1, Math.round((float) sprite.sourceHeight())),
+                        Math.max(1, Math.round((float) sprite.textureWidth())),
+                        Math.max(1, Math.round((float) sprite.textureHeight())), color);
+            }
+        } finally {
+            if (rotated) graphics.pose().popMatrix();
         }
     }
 
@@ -123,5 +145,12 @@ final class GuiTextureRenderer {
             case SCREEN_CENTER -> state.baseContext.screenHeight() / 2;
             case SCREEN -> 0;
         };
+    }
+
+    static int multiplyAlpha(int color, double alpha) {
+        double clamped = Math.max(0.0D, Math.min(1.0D, alpha));
+        int sourceAlpha = color >>> 24 & 0xFF;
+        int resultAlpha = Math.max(0, Math.min(255, (int) Math.round(sourceAlpha * clamped)));
+        return resultAlpha << 24 | color & 0x00FFFFFF;
     }
 }
