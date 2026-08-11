@@ -638,17 +638,7 @@ minecraft:textures/gui/sprites/inventory.png
 - 无法取得后备文件的自定义 `IResourcePack` 不能提供大写 Kyeitk 目录；
 - 游戏内视觉效果、不同 GUI 缩放及与其他 Mod 的组合效果需由使用者验证。
 
-## 16. 发布前验证清单
-
-1. 启用材质包并打开目标容器；
-2. 检查所有图片透明背景、位置、缩放和层级；
-3. 检查原版槽位与鼠标点击区域一致；
-4. 测试至少两种 GUI 缩放和窗口尺寸；
-5. 保持 GUI 打开并执行 `F3+T`，确认不累计漂移；
-6. 禁用材质包并重载，确认附加内容完全消失；
-7. 查看日志，确认没有 `Invalid Kyeitk GUI config` 或纹理缺失警告。
-
-## 17. Java 扩展接口
+## 16. Java 扩展接口
 
 这些接口面向后续 RedFoxExpand 模块复用，使用 Java 8；0.2.0 尚不承诺跨大版本二进制稳定性：
 
@@ -662,12 +652,5 @@ minecraft:textures/gui/sprites/inventory.png
 | `client.render.AnimationPlaybackCondition` | `shouldPlay()` | 动画选帧前判断是否播放；内置配置映射为 `always/never` |
 
 `GuiConfigLoader.load(source, reader, resolver)` 按单个 JSON 文件原子返回不可变 `GuiDefinition` 列表。
-
-0.2.0 新增的 Minecraft 无关公开包为 `redfoxexpand.reactive.*`，包括 Expression、EventDetector、Binding、
-BehaviorEngine、AnimationController、PropertyPipeline、RuntimeSnapshot 和 RuntimeVariables；
-`redfoxexpand.platform.forge1710.*` 只负责把 1.7.10 状态转换成纯 RuntimeSnapshot。资源包协议兼容不等于
-Java 二进制 API 承诺，外部 Mod 不应依赖 client/mixin 内部类。
-实现方若遇到非法路径、缺失资源或不支持的条件，应抛出 `IllegalArgumentException`；上层加载器会记录
-来源并跳过整份文件。扩展解析器不得在渲染线程逐帧执行 IO。
 
 文档最后同步日期：2026-08-11。
