@@ -204,7 +204,7 @@ assets/Kyeitk/textures/gui/inventory_expanded.png
 保留原绝对位置，需要再给槽位、标题和标签增加 `+14/+12` 偏移；当前玩家 3D 模型还不能通过
 JSON 独立补偿。不要在一次配置中同时对同一坐标重复补偿。
 
-## 6. 合并与重载约定
+## 6. 合并与重载
 
 - 所有命中的规则都会参与合并，顺序为 `screen_title` -> `container_class` -> `screen_class`，即界面类
   最具体并最后应用。
