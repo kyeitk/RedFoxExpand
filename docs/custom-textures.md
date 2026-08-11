@@ -165,15 +165,7 @@ x = -150 / 2 = -75
 
 要放在原版玩家背包左侧，可从 `x=-245,y=-109` 开始，然后结合实际素材透明边距逐步微调。
 
-## 7. inventory.png 自测资源
-
-公开仓库不附带第三方测试图片。材质包作者可以自行创建一张带透明边缘和局部半透明区域的 RGBA PNG，
-放入 `assets/Kyeitk/textures/gui/inventory.png`，并使用第 1 节的最小配置测试。
-
-只需修改 JSON 的 `x/y/width/height/layer` 即可重新布局，无需修改 Mod。建议先使用明显的小尺寸纯色
-测试图确认锚点和层级，再替换为正式素材；不要把无再分发授权的图片提交到公开仓库。
-
-## 8. 错误处理与限制
+## 7. 错误处理与限制
 
 - 缺少 `texture`、尺寸非正数、未知 `texture_type/resource_type`、未知 `anchor/layer`，或动画使用
   `gui_sprite`，会拒绝该 modifier 并记录日志。
