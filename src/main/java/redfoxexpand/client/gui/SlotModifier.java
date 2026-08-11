@@ -76,6 +76,21 @@ public final class SlotModifier {
         );
     }
 
+    public static SlotModifier fromNative(redfoxexpand.core.GuiDefinition.SlotRule rule) {
+        return new SlotModifier(
+                new LinkedHashSet<Integer>(rule.slots()),
+                rule.targetX(),
+                rule.targetY(),
+                rule.targetClass(),
+                rule.classMatchMode() == redfoxexpand.core.GuiDefinition.ClassMatchMode.ASSIGNABLE
+                        ? ClassMatchMode.ASSIGNABLE : ClassMatchMode.EXACT,
+                rule.xOffset(),
+                rule.yOffset(),
+                rule.highlightColor(),
+                rule.highlightColor2()
+        );
+    }
+
     private static void addSlotExpression(Set<Integer> slots, JsonElement element) {
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
             slots.add(element.getAsInt());

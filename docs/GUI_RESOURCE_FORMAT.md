@@ -67,6 +67,13 @@
 
 `condition` 当前只支持 `always` 和 `never`。时长范围为 1..600000 ms，帧数为 1..4096。
 
+上例是 v1 目录帧动画。strict v2/v3 的 Sprite 在 `animation` 对象内声明 texture frame 数组，并在 reload
+阶段校验 PNG/像素预算；渲染阶段只选择缓存的 `ResourceLocation`。Schema v3 Definition 顶层的
+`animations` 是另一套 Property Animation，只改变 translate/alpha/scale/rotation，不选择纹理帧，二者可组合。
+
+Property transform 围绕 Sprite 中心使用 `GL11` 矩阵临时合成，不回写基础 x/y/width/height；动画停止、
+GUI 关闭或 generation 替换后恢复基础值。完整语义见 [SCHEMA_V3.md](SCHEMA_V3.md)。
+
 ## Slot 与文字
 
 Slot 规则匹配修改前的基础坐标。reload 或再次应用时只撤销 RedFoxExpand 自己记录的偏移，不覆盖其他 Mod

@@ -4,88 +4,138 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.IResourcePack;
 import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import net.minecraft.util.ResourceLocation;
 import redfoxexpand.RedFoxExpand;
+import redfoxexpand.core.ResourceLimits;
 
+import java.io.FilterInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-/** Discovers API v2 configs through the native lowercase resource domain. */
+/** Discovers native lowercase Schema v2/v3 configs and retains their source pack. */
 public final class NativeManifestScanner {
-
     public static final ResourceLocation MANIFEST = new ResourceLocation(
-            ResourcePathResolver.LOWERCASE_NAMESPACE,
-            "redfoxexpand/index.json"
-    );
+            ResourcePathResolver.LOWERCASE_NAMESPACE, "redfoxexpand/index.json");
 
-    private NativeManifestScanner() {
+    private NativeManifestScanner() { }
+
+    public static List<ConfigRef> findConfigs(IResourceManager manager) {
+        List<ConfigRef> result = new ArrayList<ConfigRef>();
+        if (!(manager instanceof SimpleReloadableResourceManager)) {
+            RedFoxExpand.LOGGER.error("Native Schema v2/v3 requires SimpleReloadableResourceManager");
+            return result;
+        }
+        List<IResourcePack> packs = KyeitkResourceScanner.activePacks(
+                (SimpleReloadableResourceManager) manager
+        );
+        return findConfigs(packs);
     }
 
-    public static List<ResourceLocation> findConfigs(IResourceManager manager) {
-        Set<ResourceLocation> result = new LinkedHashSet<ResourceLocation>();
+    static List<ConfigRef> findConfigs(List<IResourcePack> packs) {
+        List<ConfigRef> result = new ArrayList<ConfigRef>();
+        for (int priority = 0; priority < packs.size(); priority++) {
+            IResourcePack pack = packs.get(priority);
+            if (!pack.resourceExists(MANIFEST)) continue;
+            try {
+                parseManifest(pack, priority, result);
+            } catch (Exception error) {
+                RedFoxExpand.LOGGER.error("Invalid native Schema v2/v3 manifest from {}",
+                        pack.getPackName(), error);
+            }
+        }
+        return result;
+    }
+
+    private static void parseManifest(IResourcePack pack, int priority,
+                                      List<ConfigRef> result) throws IOException {
+        InputStream stream = limited(pack.getInputStream(MANIFEST),
+                ResourceLimits.MAX_JSON_BYTES, MANIFEST.toString());
         try {
-            List<IResource> manifests = manager.getAllResources(MANIFEST);
-            for (IResource resource : manifests) {
-                InputStream stream = null;
-                try {
-                    stream = ResourceLimits.limited(
-                            resource.getInputStream(),
-                            ResourceLimits.MAX_CONFIG_BYTES,
-                            MANIFEST.toString()
-                    );
-                    JsonObject json = new JsonParser().parse(new InputStreamReader(
-                            stream,
-                            StandardCharsets.UTF_8
-                    )).getAsJsonObject();
-                    int apiVersion = json.has("api_version")
-                            ? json.get("api_version").getAsInt()
-                            : 0;
-                    if (apiVersion != 2) {
-                        throw new IllegalArgumentException(
-                                "Native Kyeitk manifest api_version must be 2"
-                        );
-                    }
-                    JsonArray configs = json.getAsJsonArray("configs");
-                    if (configs == null || configs.size() > 1024) {
-                        throw new IllegalArgumentException(
-                                "Native Kyeitk manifest requires at most 1024 configs"
-                        );
-                    }
-                    for (JsonElement element : configs) {
-                        String path = ResourcePathResolver.normalizeRelativePath(
-                                element.getAsString()
-                        );
-                        if (!path.startsWith("redfoxexpand/config/")
-                                || !path.endsWith(".json")) {
-                            throw new IllegalArgumentException(
-                                    "Native config must be under redfoxexpand/config/: " + path
-                            );
-                        }
-                        result.add(new ResourceLocation(
-                                ResourcePathResolver.LOWERCASE_NAMESPACE,
-                                path
-                        ));
-                    }
-                } catch (Exception error) {
-                    RedFoxExpand.LOGGER.error("Invalid native Kyeitk v2 manifest", error);
-                } finally {
-                    if (stream != null) {
-                        stream.close();
-                    }
+            JsonElement parsed = new JsonParser().parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
+            if (!parsed.isJsonObject()) throw new IllegalArgumentException("manifest root must be an object");
+            JsonObject json = parsed.getAsJsonObject();
+            Set<String> unknown = new HashSet<String>();
+            for (Map.Entry<String, JsonElement> entry : json.entrySet()) unknown.add(entry.getKey());
+            unknown.remove("api_version"); unknown.remove("configs");
+            if (!unknown.isEmpty()) throw new IllegalArgumentException("unknown manifest fields: " + unknown);
+            int apiVersion = json.has("api_version") ? json.get("api_version").getAsInt() : 0;
+            if (apiVersion != 2 && apiVersion != 3) {
+                throw new IllegalArgumentException("manifest api_version must be 2 or 3");
+            }
+            JsonArray configs = json.getAsJsonArray("configs");
+            if (configs == null || configs.size() > ResourceLimits.MAX_MANIFEST_CONFIGS) {
+                throw new IllegalArgumentException("manifest configs exceeds " + ResourceLimits.MAX_MANIFEST_CONFIGS);
+            }
+            Set<ResourceLocation> unique = new LinkedHashSet<ResourceLocation>();
+            for (JsonElement element : configs) {
+                if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+                    throw new IllegalArgumentException("manifest config entries must be strings");
+                }
+                String configured = ResourceLimits.safePath(element.getAsString(), "manifest config");
+                ResourceLocation location = configured.indexOf(':') >= 0
+                        ? new ResourceLocation(configured)
+                        : new ResourceLocation(ResourcePathResolver.LOWERCASE_NAMESPACE, configured);
+                if (!ResourcePathResolver.LOWERCASE_NAMESPACE.equals(location.getResourceDomain())
+                        || !location.getResourcePath().startsWith("redfoxexpand/config/")
+                        || !location.getResourcePath().endsWith(".json")) {
+                    throw new IllegalArgumentException("config must be under kyeitk:redfoxexpand/config/: " + location);
+                }
+                if (unique.add(location)) {
+                    result.add(new ConfigRef(apiVersion, location, pack, pack.getPackName(), priority));
                 }
             }
-        } catch (java.io.FileNotFoundException ignored) {
-            // Native API v2 is optional.
-        } catch (java.io.IOException ignored) {
-            // 1.7.10 reports a missing resource as a generic IOException.
+        } finally {
+            stream.close();
         }
-        return new ArrayList<ResourceLocation>(result);
+    }
+
+    public static InputStream samePackStream(ConfigRef ref) throws IOException {
+        if (!ref.resourcePack.resourceExists(ref.location)) {
+            throw new IOException("Missing same-pack config " + ref.location
+                    + " from " + ref.sourcePack);
+        }
+        return ref.resourcePack.getInputStream(ref.location);
+    }
+
+    public static InputStream limited(InputStream source, final long maximum, final String label) {
+        return new FilterInputStream(source) {
+            private long count;
+            @Override public int read() throws IOException {
+                int value = super.read(); if (value >= 0) consume(1); return value;
+            }
+            @Override public int read(byte[] buffer, int offset, int length) throws IOException {
+                int read = super.read(buffer, offset, length); if (read > 0) consume(read); return read;
+            }
+            private void consume(int amount) throws IOException {
+                count += amount;
+                if (count > maximum) throw new IOException(label + " exceeds " + maximum + " bytes");
+            }
+        };
+    }
+
+    public static final class ConfigRef {
+        public final int apiVersion;
+        public final ResourceLocation location;
+        final IResourcePack resourcePack;
+        public final String sourcePack;
+        public final int sourcePriority;
+        ConfigRef(int apiVersion, ResourceLocation location, IResourcePack resourcePack,
+                  String sourcePack, int sourcePriority) {
+            this.apiVersion = apiVersion; this.location = location;
+            this.resourcePack = resourcePack;
+            this.sourcePack = sourcePack; this.sourcePriority = sourcePriority;
+        }
+        @Override public String toString() { return location + " from " + sourcePack; }
     }
 }

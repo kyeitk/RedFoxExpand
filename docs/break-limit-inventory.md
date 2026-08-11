@@ -31,6 +31,9 @@ RedFoxExpand 通过修改 `GuiContainer` 的 `xSize/ySize/guiLeft/guiTop` 扩展
 多个匹配规则的偏移累加。刷新时只撤销 RedFoxExpand 上一次记录的 delta，再重新计算；不会把 Slot 恢复到
 构造时硬编码位置，也不会主动撤销其他 Mod 的修改。
 
+Schema v3 Property Animation 当前只接受 Sprite ID，不接受真实 Slot target；因此人物抖动、缩放或旋转不会
+改变物品渲染、hover、点击或拖拽区域。Slot 仍只由 `slot_modifiers` 修改。
+
 ## 高亮
 
 `highlight_color`（或别名 `color`）和 `color_2` 是 ARGB。只写一个颜色时两端相同。高亮使用容器当前

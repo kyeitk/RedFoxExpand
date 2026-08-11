@@ -16,6 +16,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import redfoxexpand.client.resource.ResourceLimits;
+import redfoxexpand.core.DefinitionCandidate;
+import redfoxexpand.reactive.ReactiveDefinition;
 
 /** Immutable GUI configuration model, independent from Forge rendering hooks. */
 public final class GuiDefinition {
@@ -77,10 +79,14 @@ public final class GuiDefinition {
     public final int labelYOffset;
     public final Integer titleColor;
     public final Integer labelColor;
+    public final boolean titleHidden;
+    public final boolean labelHidden;
     public final List<SlotModifier> slotModifiers;
     public final List<SpriteOverlay> sprites;
     public final List<TextOverlay> texts;
     public final List<FontRule> fontRules;
+    public final DefinitionCandidate nativeCandidate;
+    public final ReactiveDefinition reactive;
 
     private GuiDefinition(
             ResourceLocation source,
@@ -100,10 +106,14 @@ public final class GuiDefinition {
             int labelYOffset,
             Integer titleColor,
             Integer labelColor,
+            boolean titleHidden,
+            boolean labelHidden,
             List<SlotModifier> slotModifiers,
             List<SpriteOverlay> sprites,
             List<TextOverlay> texts,
-            List<FontRule> fontRules
+            List<FontRule> fontRules,
+            DefinitionCandidate nativeCandidate,
+            ReactiveDefinition reactive
     ) {
         this.source = source;
         this.id = id;
@@ -122,10 +132,14 @@ public final class GuiDefinition {
         this.labelYOffset = labelYOffset;
         this.titleColor = titleColor;
         this.labelColor = labelColor;
+        this.titleHidden = titleHidden;
+        this.labelHidden = labelHidden;
         this.slotModifiers = Collections.unmodifiableList(slotModifiers);
         this.sprites = Collections.unmodifiableList(sprites);
         this.texts = Collections.unmodifiableList(texts);
         this.fontRules = Collections.unmodifiableList(fontRules);
+        this.nativeCandidate = nativeCandidate;
+        this.reactive = reactive == null ? ReactiveDefinition.EMPTY : reactive;
     }
 
     static GuiDefinition parse(
@@ -154,10 +168,14 @@ public final class GuiDefinition {
                     0, 0, 0, 0, 0, 0, 0, 0,
                     null,
                     null,
+                    false,
+                    false,
                     new ArrayList<SlotModifier>(),
                     new ArrayList<SpriteOverlay>(),
                     new ArrayList<TextOverlay>(),
-                    new ArrayList<FontRule>()
+                    new ArrayList<FontRule>(),
+                    null,
+                    ReactiveDefinition.EMPTY
             );
         }
 
@@ -202,10 +220,67 @@ public final class GuiDefinition {
                 JsonSupport.integer(json, "label_y_offset", 0),
                 JsonSupport.color(json, "title_color"),
                 JsonSupport.color(json, "label_color"),
+                false,
+                false,
                 slots,
                 sprites,
                 texts,
-                fontRules
+                fontRules,
+                null,
+                ReactiveDefinition.EMPTY
+        );
+    }
+
+    /** Adapts one strict native v2/v3 candidate to the existing 1.7.10 render model. */
+    public static GuiDefinition fromNative(
+            DefinitionCandidate candidate,
+            List<SpriteOverlay> sprites
+    ) {
+        redfoxexpand.core.GuiDefinition nativeDefinition = candidate.definition();
+        redfoxexpand.core.GuiDefinition.Geometry geometry = nativeDefinition.geometry();
+        List<SlotModifier> slots = new ArrayList<SlotModifier>();
+        for (redfoxexpand.core.GuiDefinition.SlotRule rule : nativeDefinition.slotRules()) {
+            slots.add(SlotModifier.fromNative(rule));
+        }
+        List<TextOverlay> texts = new ArrayList<TextOverlay>();
+        for (redfoxexpand.core.GuiDefinition.TextOverlay text : nativeDefinition.texts()) {
+            texts.add(TextOverlay.fromNative(text));
+        }
+        int titleX = 0;
+        int titleY = 0;
+        int labelX = 0;
+        int labelY = 0;
+        Integer titleColor = null;
+        Integer labelColor = null;
+        boolean titleHidden = false;
+        boolean labelHidden = false;
+        for (redfoxexpand.core.GuiDefinition.TextRule rule : nativeDefinition.textRules()) {
+            if (rule.selector() == redfoxexpand.core.GuiDefinition.TextSelector.TITLE) {
+                titleX += rule.xOffset();
+                titleY += rule.yOffset();
+                if (rule.color() != null) titleColor = rule.color();
+                titleHidden |= rule.hidden();
+            } else {
+                labelX += rule.xOffset();
+                labelY += rule.yOffset();
+                if (rule.color() != null) labelColor = rule.color();
+                labelHidden |= rule.hidden();
+            }
+        }
+        return new GuiDefinition(
+                new ResourceLocation(candidate.sourcePath()),
+                candidate.id(),
+                Operation.APPEND,
+                candidate.priority(),
+                TargetType.CONTAINER_CLASS,
+                "",
+                ClassMatchMode.EXACT,
+                geometry.xOffset(), geometry.yOffset(),
+                geometry.widthOffset(), geometry.heightOffset(),
+                titleX, titleY, labelX, labelY,
+                titleColor, labelColor, titleHidden, labelHidden,
+                slots, new ArrayList<SpriteOverlay>(sprites), texts,
+                new ArrayList<FontRule>(), candidate, nativeDefinition.reactive()
         );
     }
 

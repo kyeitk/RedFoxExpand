@@ -193,7 +193,7 @@ public final class KyeitkResourceScanner {
         }
     }
 
-    private static List<IResourcePack> activePacks(SimpleReloadableResourceManager manager) {
+    static List<IResourcePack> activePacks(SimpleReloadableResourceManager manager) {
         List<IResourcePack> discovered = new ArrayList<IResourcePack>();
         collectMinecraftPackLists(discovered);
         collectManagerPacks(manager, discovered);

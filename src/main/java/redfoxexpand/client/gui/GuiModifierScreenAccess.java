@@ -11,4 +11,6 @@ public interface GuiModifierScreenAccess {
     void redfoxexpand$afterInventoryEffectOriginUpdate();
 
     int redfoxexpand$getPotionEffectsX();
+
+    void redfoxexpand$tickReactive();
 }

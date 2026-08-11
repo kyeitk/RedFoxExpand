@@ -31,21 +31,24 @@ public final class FontRenderContext {
             return new AdjustedText(
                     x + rule.xOffset,
                     y + rule.yOffset,
-                    rule.color == null ? color : rule.color.intValue()
+                    rule.color == null ? color : rule.color.intValue(),
+                    false
             );
         }
         if (call == 0) {
             return new AdjustedText(
                     x + state.modifier.titleXOffset,
                     y + state.modifier.titleYOffset,
-                    state.modifier.titleColor == null ? color : state.modifier.titleColor.intValue()
+                    state.modifier.titleColor == null ? color : state.modifier.titleColor.intValue(),
+                    state.modifier.titleHidden
             );
         }
         if (call == 1) {
             return new AdjustedText(
                     x + state.modifier.labelXOffset,
                     y + state.modifier.labelYOffset,
-                    state.modifier.labelColor == null ? color : state.modifier.labelColor.intValue()
+                    state.modifier.labelColor == null ? color : state.modifier.labelColor.intValue(),
+                    state.modifier.labelHidden
             );
         }
         return null;
@@ -64,11 +67,13 @@ public final class FontRenderContext {
         public final int x;
         public final int y;
         public final int color;
+        public final boolean hidden;
 
-        private AdjustedText(int x, int y, int color) {
+        private AdjustedText(int x, int y, int color, boolean hidden) {
             this.x = x;
             this.y = y;
             this.color = color;
+            this.hidden = hidden;
         }
     }
 }

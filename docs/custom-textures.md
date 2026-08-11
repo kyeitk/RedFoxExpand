@@ -1,6 +1,8 @@
 # `custom_textures` 参考
 
 `custom_textures` 是推荐贴图接口，一个 definition 可按数组顺序放置多张贴图。
+本页描述 v1 兼容接口；strict v2/v3 使用 `sprites[].texture` 对象，Schema v3 还能用稳定 Sprite ID 作为
+Binding/Action target。详见 [resourcepack-api.md](resourcepack-api.md) 与 [SCHEMA_V3.md](SCHEMA_V3.md)。
 
 ## 字段
 

@@ -3,6 +3,35 @@
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。Minecraft 1.7.10 版本使用
 `vX.Y.Z-mc1.7.10` Git Tag。
 
+## [0.2.0-mc1.7.10] - 2026-08-11
+
+### Added
+
+- 移植与 1.8.9/26.2 同协议的 Java 8 Reactive Core：Runtime Context、Expression、Binding、Event、
+  Behavior、Action、Property Animation 与无漂移 Property Pipeline；
+- native manifest 扩展为 strict Schema v2/v3，并加入稳定 Sprite ID、严格字段/引用/capability/预算校验；
+- 新增 1.7.10 玩家、GUI、screen 与 LWJGL mouse snapshot，Forge legacy FML `ClientTickEvent.END`
+  每 tick 推进一次，每个 `GuiContainer` 独占 runtime；
+- 新增 visible/alpha/translate/scale/rotation、numeric smoothing、smoothstep、health/burning/screen 事件、
+  `every + coalesce` 和 play/stop/set action；
+- 新增 native TextureSpec、inline 帧动画、PNG/IHDR/像素预算与完整 Schema v3 公开文档；
+- 版本号更新为 `0.2.0`。
+
+### Fixed
+
+- 1.7.10 `IResource` 无 pack name 时，由 ConfigRef 保留实际 active `IResourcePack`，确保 config 与
+  声明它的 manifest 从同一资源包读取；
+- 修复 v2/v3 切包后 TextureManager 重载上一包旧 PNG：仅移除由 RedFoxExpand 首次创建的
+  `SimpleTexture`，不清理原版或其他 Mod 的共享纹理；
+- reload 顶层失败改为保留上一 immutable generation；成功替换后清理旧 per-screen Reactive 状态；
+- 动画停止、GUI 关闭或 generation 替换后恢复基础 transform，不累计位移；
+- 保留既有 1.7.10 背景矩阵、Slot delta、`font_rules`、药水右侧布局和 legacy/v1/v2/v3 共存架构。
+
+### Release
+
+- 公开 `1.7.10` 分支仅包含主源码、构建脚本、公开文档和发布 JAR；
+- 排除内部测试/验证代码、示例资源包、移植审计资料、构建缓存和受限制第三方素材。
+
 ## [0.1.0-mc1.7.10] - 2026-08-08
 
 ### Added

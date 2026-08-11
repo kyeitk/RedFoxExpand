@@ -7,6 +7,7 @@ import net.minecraft.inventory.Slot;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import redfoxexpand.core.DefinitionCandidate;
 
 public final class ResolvedGuiModifier {
 
@@ -20,10 +21,13 @@ public final class ResolvedGuiModifier {
     public final int labelYOffset;
     public final Integer titleColor;
     public final Integer labelColor;
+    public final boolean titleHidden;
+    public final boolean labelHidden;
     private final List<SlotModifier> slotModifiers;
     public final List<SpriteOverlay> sprites;
     public final List<TextOverlay> texts;
     private final List<FontRule> fontRules;
+    public final List<DefinitionCandidate> reactiveDefinitions;
 
     private ResolvedGuiModifier(
             int xOffset,
@@ -36,10 +40,13 @@ public final class ResolvedGuiModifier {
             int labelYOffset,
             Integer titleColor,
             Integer labelColor,
+            boolean titleHidden,
+            boolean labelHidden,
             List<SlotModifier> slotModifiers,
             List<SpriteOverlay> sprites,
             List<TextOverlay> texts,
-            List<FontRule> fontRules
+            List<FontRule> fontRules,
+            List<DefinitionCandidate> reactiveDefinitions
     ) {
         this.xOffset = xOffset;
         this.yOffset = yOffset;
@@ -51,10 +58,13 @@ public final class ResolvedGuiModifier {
         this.labelYOffset = labelYOffset;
         this.titleColor = titleColor;
         this.labelColor = labelColor;
+        this.titleHidden = titleHidden;
+        this.labelHidden = labelHidden;
         this.slotModifiers = Collections.unmodifiableList(slotModifiers);
         this.sprites = Collections.unmodifiableList(sprites);
         this.texts = Collections.unmodifiableList(texts);
         this.fontRules = Collections.unmodifiableList(fontRules);
+        this.reactiveDefinitions = Collections.unmodifiableList(reactiveDefinitions);
     }
 
     static ResolvedGuiModifier merge(List<GuiDefinition> modifiers) {
@@ -68,10 +78,13 @@ public final class ResolvedGuiModifier {
         int labelYOffset = 0;
         Integer titleColor = null;
         Integer labelColor = null;
+        boolean titleHidden = false;
+        boolean labelHidden = false;
         List<SlotModifier> slots = new ArrayList<SlotModifier>();
         List<SpriteOverlay> sprites = new ArrayList<SpriteOverlay>();
         List<TextOverlay> texts = new ArrayList<TextOverlay>();
         List<FontRule> fontRules = new ArrayList<FontRule>();
+        List<DefinitionCandidate> reactiveDefinitions = new ArrayList<DefinitionCandidate>();
 
         for (GuiDefinition modifier : modifiers) {
             xOffset += modifier.xOffset;
@@ -88,10 +101,16 @@ public final class ResolvedGuiModifier {
             if (modifier.labelColor != null) {
                 labelColor = modifier.labelColor;
             }
+            titleHidden |= modifier.titleHidden;
+            labelHidden |= modifier.labelHidden;
             slots.addAll(modifier.slotModifiers);
             sprites.addAll(modifier.sprites);
             texts.addAll(modifier.texts);
             fontRules.addAll(modifier.fontRules);
+            if (modifier.nativeCandidate != null
+                    && modifier.nativeCandidate.apiVersion() == 3) {
+                reactiveDefinitions.add(modifier.nativeCandidate);
+            }
         }
 
         return new ResolvedGuiModifier(
@@ -105,10 +124,13 @@ public final class ResolvedGuiModifier {
                 labelYOffset,
                 titleColor,
                 labelColor,
+                titleHidden,
+                labelHidden,
                 slots,
                 sprites,
                 texts,
-                fontRules
+                fontRules,
+                reactiveDefinitions
         );
     }
 
@@ -132,8 +154,23 @@ public final class ResolvedGuiModifier {
     }
 
     public void renderForegroundText() {
+        renderTextLayer(SpriteOverlay.Layer.FOREGROUND, 0, 0, 0, 0, true);
+    }
+
+    public void renderTextLayer(
+            SpriteOverlay.Layer layer,
+            int guiLeft,
+            int guiTop,
+            int screenWidth,
+            int screenHeight,
+            boolean matrixAtGuiOrigin
+    ) {
         for (TextOverlay text : texts) {
-            text.render(0, 0);
+            if (text.layer == layer) {
+                text.renderAnchored(
+                        guiLeft, guiTop, screenWidth, screenHeight, matrixAtGuiOrigin
+                );
+            }
         }
     }
 }

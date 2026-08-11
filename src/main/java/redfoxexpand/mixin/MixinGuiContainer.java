@@ -7,7 +7,11 @@ import redfoxexpand.client.gui.InventoryEffectGeometry;
 import redfoxexpand.client.gui.ResolvedGuiModifier;
 import redfoxexpand.client.gui.SlotModifier;
 import redfoxexpand.client.gui.SpriteOverlay;
+import redfoxexpand.client.gui.ReactiveScreenRuntime;
 import redfoxexpand.platform.forge1710.Forge1710BackgroundGeometry;
+import redfoxexpand.platform.forge1710.Forge1710Clock;
+import redfoxexpand.platform.forge1710.Forge1710RuntimeDiagnostics;
+import redfoxexpand.platform.forge1710.Forge1710RuntimeStateProvider;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Container;
@@ -79,6 +83,12 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
     @Unique
     private boolean redfoxexpand$configuredOriginReady;
 
+    @Unique
+    private ReactiveScreenRuntime redfoxexpand$reactiveRuntime;
+
+    @Unique
+    private Object redfoxexpand$playerIdentity;
+
     @Inject(method = "initGui", at = @At("HEAD"))
     private void redfoxexpand$resetSizeBeforeInit(CallbackInfo callback) {
         redfoxexpand$initializing = true;
@@ -121,6 +131,32 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
     }
 
     @Override
+    public void redfoxexpand$tickReactive() {
+        if (redfoxexpand$reactiveRuntime == null) return;
+        net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getMinecraft();
+        Object player = client.thePlayer;
+        redfoxexpand.reactive.runtime.RuntimeSnapshot snapshot =
+                Forge1710RuntimeStateProvider.snapshot(
+                        client, width, height, guiLeft, guiTop, xSize, ySize
+                );
+        if (player != redfoxexpand$playerIdentity) {
+            redfoxexpand$reactiveRuntime.clear();
+            redfoxexpand$reactiveRuntime = new ReactiveScreenRuntime(
+                    redfoxexpand$modifier.reactiveDefinitions,
+                    new Forge1710RuntimeDiagnostics()
+            );
+            redfoxexpand$playerIdentity = player;
+            redfoxexpand$reactiveRuntime.initialize(
+                    snapshot, Forge1710Clock.INSTANCE.nowMillis()
+            );
+            return;
+        }
+        redfoxexpand$reactiveRuntime.tick(
+                snapshot, Forge1710Clock.INSTANCE.nowMillis()
+        );
+    }
+
+    @Override
     public void redfoxexpand$refreshModifier() {
         if (!redfoxexpand$baseCaptured) {
             redfoxexpand$baseXSize = xSize;
@@ -134,13 +170,16 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
 
     @Unique
     private void redfoxexpand$resolveAndApply() {
+        redfoxexpand$clearReactiveRuntime();
         xSize = redfoxexpand$baseXSize;
         ySize = redfoxexpand$baseYSize;
         guiLeft = redfoxexpand$baseGuiLeft;
         guiTop = redfoxexpand$baseGuiTop;
 
         GuiContainer self = (GuiContainer) (Object) this;
-        redfoxexpand$modifier = RedFoxExpand.GUI_MODIFIERS.resolve(self);
+        redfoxexpand$modifier = RedFoxExpand.GUI_MODIFIERS.resolve(
+                self, guiLeft, guiTop, xSize, ySize
+        );
         if (redfoxexpand$modifier != null) {
             xSize += redfoxexpand$modifier.widthOffset;
             ySize += redfoxexpand$modifier.heightOffset;
@@ -150,6 +189,36 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
         redfoxexpand$configuredGuiLeft = guiLeft;
         redfoxexpand$configuredOriginReady = true;
         RedFoxExpand.GUI_MODIFIERS.applyAllSlots(self, redfoxexpand$modifier);
+        if (redfoxexpand$modifier != null
+                && !redfoxexpand$modifier.reactiveDefinitions.isEmpty()) {
+            redfoxexpand$reactiveRuntime = new ReactiveScreenRuntime(
+                    redfoxexpand$modifier.reactiveDefinitions,
+                    new Forge1710RuntimeDiagnostics()
+            );
+            redfoxexpand$playerIdentity =
+                    net.minecraft.client.Minecraft.getMinecraft().thePlayer;
+            redfoxexpand$reactiveRuntime.initialize(
+                    Forge1710RuntimeStateProvider.snapshot(
+                            net.minecraft.client.Minecraft.getMinecraft(),
+                            width, height, guiLeft, guiTop, xSize, ySize
+                    ),
+                    Forge1710Clock.INSTANCE.nowMillis()
+            );
+        }
+    }
+
+    @Unique
+    private void redfoxexpand$clearReactiveRuntime() {
+        if (redfoxexpand$reactiveRuntime != null) {
+            redfoxexpand$reactiveRuntime.clear();
+            redfoxexpand$reactiveRuntime = null;
+        }
+        redfoxexpand$playerIdentity = null;
+    }
+
+    @Inject(method = "onGuiClosed", at = @At("HEAD"))
+    private void redfoxexpand$disposeReactiveRuntime(CallbackInfo callback) {
+        redfoxexpand$clearReactiveRuntime();
     }
 
     @Redirect(
@@ -173,7 +242,12 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
                     guiTop,
                     width,
                     height,
-                    false
+                    false,
+                    redfoxexpand$reactiveRuntime
+            );
+            redfoxexpand$modifier.renderTextLayer(
+                    SpriteOverlay.Layer.UNDERLAY, guiLeft, guiTop,
+                    width, height, false
             );
         }
         int originalGuiLeft = guiLeft;
@@ -224,7 +298,12 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
                     guiTop,
                     width,
                     height,
-                    false
+                    false,
+                    redfoxexpand$reactiveRuntime
+            );
+            redfoxexpand$modifier.renderTextLayer(
+                    SpriteOverlay.Layer.BACKGROUND, guiLeft, guiTop,
+                    width, height, false
             );
         }
     }
@@ -256,9 +335,13 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
                     guiTop,
                     width,
                     height,
-                    true
+                    true,
+                    redfoxexpand$reactiveRuntime
             );
-            redfoxexpand$modifier.renderForegroundText();
+            redfoxexpand$modifier.renderTextLayer(
+                    SpriteOverlay.Layer.FOREGROUND, guiLeft, guiTop,
+                    width, height, true
+            );
         }
     }
 

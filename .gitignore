@@ -25,6 +25,7 @@ hs_err_pid*
 src/test/
 test/
 tests/
+examples/
 example-resourcepack/
 example-animated-resourcepack/
 example-resourcepack.zip
@@ -34,6 +35,17 @@ migration-staging/
 tools/
 *.zip
 §*/
+
+# Internal design, porting, audit and validation notes are not part of the
+# public release snapshot.
+docs/ARCHITECTURE.md
+docs/MC1710_API_MAPPING.md
+docs/MC1710_COMPATIBILITY.md
+docs/MC1710_PORT_FEATURE_MATRIX.md
+docs/MC1710_PORT_PLAN.md
+docs/REFACTOR_PLAN.md
+docs/SCHEMA_V3_PORT_REPORT.md
+docs/TESTING.md
 
 # Operating-system noise
 .DS_Store

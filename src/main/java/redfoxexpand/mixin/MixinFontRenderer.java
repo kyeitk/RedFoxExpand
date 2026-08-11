@@ -29,6 +29,10 @@ public abstract class MixinFontRenderer {
                 color
         );
         if (adjusted != null) {
+            if (adjusted.hidden) {
+                callback.setReturnValue(Integer.valueOf(0));
+                return;
+            }
             callback.setReturnValue(((FontRenderer) (Object) this).drawString(
                     text,
                     adjusted.x,
