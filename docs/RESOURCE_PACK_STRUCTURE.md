@@ -1,6 +1,6 @@
 # RedFoxExpand 1.8.9 材质包目录规范
 
-本文定义 `0.2.0` 的 v1/v2/v3 目录、资源优先级和迁移边界。字段见
+本文定义 `0.2.1` 的 v1/v2/v3/v3.1 目录、资源优先级和迁移边界。字段见
 [`resourcepack-api.md`](resourcepack-api.md) 与 [`SCHEMA_V3.md`](SCHEMA_V3.md)。
 
 ## Native v2/v3 标准目录
@@ -59,14 +59,14 @@ resource-pack priority
 ```
 
 `append` 保留同 ID 定义；`replace` 移除之前同 ID 候选并加入自己；`disable` 移除之前同 ID 候选且不加入。
-reload 在临时对象中完成扫描、解析与纹理验证；成功后一次替换 generation，失败保留旧 generation。
+reload 在临时对象中完成扫描、解析与纹理检查；成功后一次替换 generation，失败保留旧 generation。
 
 ## 路径安全与预算
 
 - 拒绝绝对路径、盘符、前导 `/`、反斜杠穿越、空段、`.` 与 `..`。
 - config 最大 1 MiB，JSON 最大嵌套 32；Definition/Sprite/Slot/Text/动画帧均有固定计数预算。
 - native PNG 最大 32 MiB、单边 4096、单图 16M pixels、单动画 64M pixels、generation 128M pixels。
-- 纹理存在性和 PNG IHDR 在 reload 验证；render/tick 不执行文件、ZIP、JSON、PNG 或表达式解析。
+- 纹理存在性和 PNG IHDR 在 reload 阶段检查；render/tick 不执行文件、ZIP、JSON、PNG 或表达式解析。
 - v1 动态纹理由 generation 的 `KyeitkTextureRegistry` 持有；成功替换后释放旧 registry。
 
 ## 迁移建议

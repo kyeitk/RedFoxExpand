@@ -59,7 +59,9 @@ public final class ResolvedModifier {
         Collections.sort(sprites, new Comparator<GuiDefinition.Sprite>() {
             @Override public int compare(GuiDefinition.Sprite left, GuiDefinition.Sprite right) {
                 int layer = left.layer().compareTo(right.layer());
-                return layer != 0 ? layer : Double.compare(left.z(), right.z());
+                if (layer != 0) return layer;
+                int z = Double.compare(left.z(), right.z());
+                return z != 0 ? z : Integer.compare(left.sceneOrder(), right.sceneOrder());
             }
         });
         return new ResolvedModifier(new GuiDefinition.Geometry(x, y, width, height),

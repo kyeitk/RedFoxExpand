@@ -1,6 +1,6 @@
 # GUI 资源格式
 
-本页主要说明 legacy v1 `assets/Kyeitk/` 架构中的静态 GUI、目录动画和 Alpha 图片要求。0.2.0 native
+本页主要说明 legacy v1 `assets/Kyeitk/` 架构中的静态 GUI、目录动画和 Alpha 图片要求。0.2.1 native
 v2/v3 改用小写 manifest、`{type, location}` texture object 与可选 inline `animation`；其完整字段见
 [`resourcepack-api.md`](resourcepack-api.md)，Reactive Property Animation 见 [`SCHEMA_V3.md`](SCHEMA_V3.md)。
 

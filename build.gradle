@@ -18,7 +18,7 @@ plugins {
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'org.spongepowered.mixin'
 
-version = '0.2.0'
+version = '0.2.1'
 group = 'redfoxexpand'
 archivesBaseName = 'RedFoxExpand-1.8.9'
 
@@ -94,7 +94,7 @@ reobf {
 build.dependsOn reobfShadowJar
 
 task prepareRelease(type: Copy, dependsOn: build) {
-    description = 'Copies the verified, reobfuscated Shadow JAR into release/.'
+    description = 'Copies the reobfuscated Shadow JAR into release/.'
     group = 'distribution'
     from "$buildDir/libs/${archivesBaseName}-${version}.jar"
     into "$projectDir/release"

@@ -16,18 +16,27 @@ public final class GuiDefinition {
     private final List<TextOverlay> texts;
     private final List<TextRule> textRules;
     private final ReactiveDefinition reactive;
+    private final List<Group> groups;
 
     public GuiDefinition(Geometry geometry, List<SlotRule> slotRules, List<Sprite> sprites,
                          List<TextOverlay> texts, List<TextRule> textRules) {
-        this(geometry, slotRules, sprites, texts, textRules, ReactiveDefinition.EMPTY);
+        this(geometry, slotRules, sprites, texts, textRules, ReactiveDefinition.EMPTY,
+                Collections.<Group>emptyList());
     }
     public GuiDefinition(Geometry geometry, List<SlotRule> slotRules, List<Sprite> sprites,
                          List<TextOverlay> texts, List<TextRule> textRules,
                          ReactiveDefinition reactive) {
+        this(geometry, slotRules, sprites, texts, textRules, reactive,
+                Collections.<Group>emptyList());
+    }
+    public GuiDefinition(Geometry geometry, List<SlotRule> slotRules, List<Sprite> sprites,
+                         List<TextOverlay> texts, List<TextRule> textRules,
+                         ReactiveDefinition reactive, List<Group> groups) {
         this.geometry = geometry;
         this.slotRules = immutable(slotRules); this.sprites = immutable(sprites);
         this.texts = immutable(texts); this.textRules = immutable(textRules);
         this.reactive = reactive == null ? ReactiveDefinition.EMPTY : reactive;
+        this.groups = immutable(groups);
     }
     private static <T> List<T> immutable(List<T> values) {
         return Collections.unmodifiableList(new ArrayList<T>(values));
@@ -38,6 +47,7 @@ public final class GuiDefinition {
     public List<TextOverlay> texts() { return texts; }
     public List<TextRule> textRules() { return textRules; }
     public ReactiveDefinition reactive() { return reactive; }
+    public List<Group> groups() { return groups; }
 
     public static final class Geometry {
         public static final Geometry ZERO = new Geometry(0, 0, 0, 0);
@@ -65,7 +75,29 @@ public final class GuiDefinition {
     public enum ClassMatchMode { EXACT, ASSIGNABLE }
     public enum ClassNameType { FULL, SIMPLE }
     public enum Layer { UNDERLAY, BACKGROUND, FOREGROUND }
-    public enum Anchor { GUI, SCREEN_CENTER, SCREEN }
+    public enum Anchor {
+        GUI,
+        SCREEN_CENTER,
+        SCREEN,
+        GUI_TOP_LEFT,
+        GUI_TOP_CENTER,
+        GUI_TOP_RIGHT,
+        GUI_CENTER_LEFT,
+        GUI_CENTER,
+        GUI_CENTER_RIGHT,
+        GUI_BOTTOM_LEFT,
+        GUI_BOTTOM_CENTER,
+        GUI_BOTTOM_RIGHT,
+        SCREEN_TOP_LEFT,
+        SCREEN_TOP_CENTER,
+        SCREEN_TOP_RIGHT,
+        SCREEN_CENTER_LEFT,
+        SCREEN_CENTER_RIGHT,
+        SCREEN_BOTTOM_LEFT,
+        SCREEN_BOTTOM_CENTER,
+        SCREEN_BOTTOM_RIGHT,
+        PARENT
+    }
     public enum ResourceType { RESOURCE_LOCATION, GUI_SPRITE, PACK_RESOURCE }
     public enum MissingFrameBehavior { USE_DEFAULT, SKIP, DISABLE }
     public enum AnimationCondition { ALWAYS, NEVER }
@@ -156,23 +188,37 @@ public final class GuiDefinition {
         private final double textureWidth, textureHeight;
         private final boolean fullTexture; private final int color;
         private final Layer layer; private final Anchor anchor; private final String id;
+        private final String parentId; private final Pivot pivot;
+        private final int sceneOrder; private final boolean sceneManaged;
         public Sprite(TextureSpec texture, Animation animation, double x, double y, double z,
                       double u, double v, double width, double height, double sourceWidth,
                       double sourceHeight, double textureWidth, double textureHeight,
                       boolean fullTexture, int color, Layer layer, Anchor anchor) {
             this(texture, animation, x, y, z, u, v, width, height, sourceWidth, sourceHeight,
-                    textureWidth, textureHeight, fullTexture, color, layer, anchor, null);
+                    textureWidth, textureHeight, fullTexture, color, layer, anchor, null,
+                    null, new Pivot(width * 0.5D, height * 0.5D), 0, false);
         }
         public Sprite(TextureSpec texture, Animation animation, double x, double y, double z,
                       double u, double v, double width, double height, double sourceWidth,
                       double sourceHeight, double textureWidth, double textureHeight,
                       boolean fullTexture, int color, Layer layer, Anchor anchor, String id) {
+            this(texture, animation, x, y, z, u, v, width, height, sourceWidth, sourceHeight,
+                    textureWidth, textureHeight, fullTexture, color, layer, anchor, id,
+                    null, new Pivot(width * 0.5D, height * 0.5D), 0, false);
+        }
+        public Sprite(TextureSpec texture, Animation animation, double x, double y, double z,
+                      double u, double v, double width, double height, double sourceWidth,
+                      double sourceHeight, double textureWidth, double textureHeight,
+                      boolean fullTexture, int color, Layer layer, Anchor anchor, String id,
+                      String parentId, Pivot pivot, int sceneOrder, boolean sceneManaged) {
             this.texture = texture; this.animation = animation; this.x = x; this.y = y; this.z = z;
             this.u = u; this.v = v; this.width = width; this.height = height;
             this.sourceWidth = sourceWidth; this.sourceHeight = sourceHeight;
             this.textureWidth = textureWidth; this.textureHeight = textureHeight;
             this.fullTexture = fullTexture; this.color = color; this.layer = layer;
-            this.anchor = anchor; this.id = id;
+            this.anchor = anchor; this.id = id; this.parentId = parentId;
+            this.pivot = pivot == null ? new Pivot(width * 0.5D, height * 0.5D) : pivot;
+            this.sceneOrder = sceneOrder; this.sceneManaged = sceneManaged;
         }
         public TextureSpec texture() { return texture; }
         public Animation animation() { return animation; }
@@ -186,6 +232,43 @@ public final class GuiDefinition {
         public Layer layer() { return layer; }
         public Anchor anchor() { return anchor; }
         public String id() { return id; }
+        public String parentId() { return parentId; }
+        public Pivot pivot() { return pivot; }
+        public int sceneOrder() { return sceneOrder; }
+        public boolean sceneManaged() { return sceneManaged; }
+    }
+    public static final class Pivot {
+        private final double x, y;
+        public Pivot(double x, double y) { this.x = x; this.y = y; }
+        public double x() { return x; }
+        public double y() { return y; }
+    }
+    /** Non-rendering Schema v3.1 scene node. Children inherit its local transform. */
+    public static final class Group {
+        private final String id, parentId;
+        private final List<String> children;
+        private final double x, y, width, height;
+        private final Anchor anchor;
+        private final Pivot pivot;
+        private final int sceneOrder;
+        public Group(String id, String parentId, List<String> children, double x, double y,
+                     double width, double height, Anchor anchor, Pivot pivot, int sceneOrder) {
+            this.id = id; this.parentId = parentId; this.children = immutable(children);
+            this.x = x; this.y = y; this.width = width; this.height = height;
+            this.anchor = anchor;
+            this.pivot = pivot == null ? new Pivot(width * 0.5D, height * 0.5D) : pivot;
+            this.sceneOrder = sceneOrder;
+        }
+        public String id() { return id; }
+        public String parentId() { return parentId; }
+        public List<String> children() { return children; }
+        public double x() { return x; }
+        public double y() { return y; }
+        public double width() { return width; }
+        public double height() { return height; }
+        public Anchor anchor() { return anchor; }
+        public Pivot pivot() { return pivot; }
+        public int sceneOrder() { return sceneOrder; }
     }
     public static final class TextOverlay {
         private final String text; private final boolean translate;

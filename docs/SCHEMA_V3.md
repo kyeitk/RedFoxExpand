@@ -1,6 +1,6 @@
 # RedFoxExpand Schema v3：Reactive UI Protocol
 
-本文记录 RedFoxExpand 1.8.9 `0.2.0` 已实现的 Schema v3 规范。Reactive Core 与 26.2 使用逐文件
+本文固定记录 RedFoxExpand 1.8.9 `0.2.1` 继续兼容的 Schema v3.0 规范。Reactive Core 与 26.2 使用同源
 相同的 Java 8 源码；Minecraft/Forge 类名只属于 1.8.9 adapter，不属于协议语义。
 
 ## 1. 设计原则
@@ -20,7 +20,8 @@ Java/反射/eval/脚本/文件/网络/命令，也不为某个 element ID、材�
 - v2：Strict Definition / Manifest Protocol；
 - v3：Reactive UI Protocol。
 
-1.8.9 `0.2.0` 同时接受 v1、v2 与 v3。一个 manifest 的 `api_version` 决定它引用的全部 config 版本；manifest v3
+1.8.9 `0.2.1` 同时接受 v1、v2、v3 与 v3.1；本页只描述严格数值 `api_version:3`。v3.1 的独立字段见
+[SCHEMA_V3_1.md](SCHEMA_V3_1.md)。一个 manifest 的 `api_version` 决定它引用的全部 config 版本；manifest v3
 引用 v2 config（或反之）会作为该 config 的明确校验错误，不做自动猜测。
 
 ## 3. Manifest
@@ -120,8 +121,7 @@ MVP 不允许 text、Slot、Widget 作为 target。
 | `mouse.left_down` | boolean | 当前 client tick 左键是否持续按下 |
 | `mouse.right_down` | boolean | 当前 client tick 右键是否持续按下 |
 
-`gui.x/y` 取自当前 `GuiContainer` 应用 geometry 后的实时原点；`mouse.gui_x = mouse.x - gui.x`，
-`mouse.gui_y = mouse.y - gui.y`。1.8.9 原版没有 Recipe Book。
+`gui.x/y` 随 resize 与配方书 leftPos/topPos 更新；`mouse.gui_x = mouse.x - gui.x`，`mouse.gui_y = mouse.y - gui.y`。
 GUI 相对坐标不 clamp，鼠标位于 GUI 左侧/上方时为负数，位于 GUI 范围外时可以大于 `gui.width/height`。
 左右键可同时为 `true`；它们是每 client tick 采样的持续 State，不是按下沿/释放沿，也不会生成鼠标 Event。
 若 1.8.9 的 LWJGL cursor/window 缩放输入因零尺寸窗口产生非有限值，平台 adapter 会把对应
@@ -203,8 +203,8 @@ screen.opened
 
 Event 由同一 Screen runtime 的相邻 client-tick RuntimeSnapshot 推导。第一份 snapshot 只建立基线；同一 tick
 内多次 render 不会产生或重放 Event。唯一例外是 `screen.opened`：它在 per-screen runtime 创建并完成第一轮
-Binding 求值后合成一次，用于启动循环动画；同一 runtime 的重复 render 不会再次触发。GuiContainer
-resize/init、F3+T、候选集合变化、LocalPlayer 更换或关闭后重开会重建 runtime，因此会再次触发。
+Binding 求值后合成一次，用于启动循环动画；resize/Recipe Book 的同候选 reconcile 不会重复触发，F3+T、
+候选集合变化、LocalPlayer 更换或关闭后重开导致 runtime 重建时会再次触发。
 
 ## 13. Event Payload
 
@@ -253,7 +253,7 @@ boolean Binding 声明 `smoothing_ms > 0` 会在 reload 拒绝。
 | `scale_y` | number | `1` | 以 Sprite 中心为原点的瞬时纵向缩放，最终 clamp 到 0..8 |
 | `rotation_z` | number | `0` | 以 Sprite 中心为枢轴的顺时针二维旋转角度（度），最终 clamp 到 -360..360 |
 
-width、height、color 和自定义旋转枢轴不属于 1.8.9 0.2.0 MVP。`scale_x/scale_y/rotation_z` 不修改 Sprite 的基础 width/height、锚点或 x/y；
+width、height、color 和自定义旋转枢轴不属于 26.2 MVP。`scale_x/scale_y/rotation_z` 不修改 Sprite 的基础 width/height、锚点或 x/y；
 `0` 表示该轴不绘制，负数和大于 `8` 的动画关键帧在 reload 拒绝。Binding 运行产生非有限值时按现有运行
 失败规则回退 Base，最终属性管线还会把 scale 限制在 0..8、rotation 限制在 -360..360。
 
@@ -383,7 +383,7 @@ F3+T prepare
 - Screen open：创建 runtime，以当前 snapshot 建立基线，不伪造 damage Event；首轮 Binding 后只触发一次 `screen.opened`；
 - END_CLIENT_TICK：更新 snapshot、生成 Event、求 Binding、执行 Behavior；
 - render：只采样 Property Animation 与最终属性；
-- GuiContainer resize/init：销毁并重建 runtime，清除 animation、smoother、override 和 accumulator；
+- resize/recipe book：candidate 集合不变则保留动画和 accumulator，只更新 live GUI context；
 - F3+T 或匹配 candidate 集合变化：新 runtime 整体替换；
 - Screen close：删除 runtime，不保留 Screen/Player/World 强引用；
 - player/world 离开或 LocalPlayer 实例改变：重建 runtime，清除 accumulator、override 与动画；
@@ -457,7 +457,7 @@ custom mutable variable/unbounded timer
 只维护一个 Schema v3。平台通过 capability 明确差异；使用不支持能力会产生 reload validation error，不能
 静默 false/0。
 
-1.8.9 `0.2.0` capability：
+1.8.9 `0.2.1` capability：
 
 ```text
 PLAYER_HEALTH / PLAYER_MAX_HEALTH / PLAYER_BURNING
@@ -477,7 +477,7 @@ matcher 会在重载时明确拒绝；请使用 exact/assignable screen/menu cla
 
 ## 26. Full Example
 
-下面是一份完整核心 config。将对应 PNG 放入配置引用的位置，并按本文 Manifest 章节建立发现入口即可使用：
+下面给出一份完整核心 config：
 
 ```json
 {
@@ -539,5 +539,5 @@ matcher 会在重载时明确拒绝；请使用 exact/assignable screen/menu cla
 }
 ```
 
-当前限制：HUD、Widget、Semantic Slot、Texture State、自定义旋转枢轴/3D 网格形变、Custom Variable/Event、
-Timer、User Function、Loop/递归、`every.mode=repeat`、Inspector，以及 text/Slot reactive target 均未实现。
+当前限制：HUD、Widget、Texture State、自定义旋转枢轴/3D 网格形变、Custom Variable/Event、Timer、User Function、
+Loop/递归，以及 text/Slot reactive target 均未实现。

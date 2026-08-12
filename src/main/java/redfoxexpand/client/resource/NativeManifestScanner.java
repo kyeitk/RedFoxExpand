@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -60,10 +61,7 @@ public final class NativeManifestScanner {
             for (Map.Entry<String, JsonElement> entry : json.entrySet()) unknown.add(entry.getKey());
             unknown.remove("api_version"); unknown.remove("configs");
             if (!unknown.isEmpty()) throw new IllegalArgumentException("unknown manifest fields: " + unknown);
-            int apiVersion = json.has("api_version") ? json.get("api_version").getAsInt() : 0;
-            if (apiVersion != 2 && apiVersion != 3) {
-                throw new IllegalArgumentException("manifest api_version must be 2 or 3");
-            }
+            int apiVersion = parseApiVersion(json.get("api_version"));
             JsonArray configs = json.getAsJsonArray("configs");
             if (configs == null || configs.size() > ResourceLimits.MAX_MANIFEST_CONFIGS) {
                 throw new IllegalArgumentException("manifest configs exceeds " + ResourceLimits.MAX_MANIFEST_CONFIGS);
@@ -89,6 +87,23 @@ public final class NativeManifestScanner {
         } finally {
             stream.close();
         }
+    }
+
+    /** Internal code 31 represents the external exact JSON number 3.1. */
+    static int parseApiVersion(JsonElement value) {
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException("manifest api_version must be numeric 2, 3 or 3.1");
+        }
+        BigDecimal version;
+        try {
+            version = value.getAsBigDecimal().stripTrailingZeros();
+        } catch (RuntimeException error) {
+            throw new IllegalArgumentException("manifest api_version must be numeric 2, 3 or 3.1");
+        }
+        if (version.compareTo(new BigDecimal("2")) == 0) return 2;
+        if (version.compareTo(new BigDecimal("3")) == 0) return 3;
+        if (version.compareTo(new BigDecimal("3.1")) == 0) return 31;
+        throw new IllegalArgumentException("manifest api_version must be 2, 3 or 3.1");
     }
 
     public static IResource samePackResource(IResourceManager manager, ConfigRef ref) throws IOException {

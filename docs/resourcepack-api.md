@@ -1,18 +1,18 @@
 # RedFoxExpand 材质包开发者 API
 
-本文档对应 RedFoxExpand `0.2.0`、Minecraft Java Edition `1.8.9` 和 Forge
-`11.15.1.2318`。它既是 API 参考，也是资源包迁移与排错手册。后续修改解析器字段、默认值、
-合并顺序或示例时，必须同步维护本文档。
+本文档对应 RedFoxExpand `0.2.1`、Minecraft Java Edition `1.8.9` 和 Forge
+`11.15.1.2318`。它既是 API 参考，也是资源包迁移与排错手册。
 
-## 0.2.0 Schema 选择
+## 0.2.1 Schema 选择
 
-RedFoxExpand 1.8.9 同时提供三条兼容入口：
+RedFoxExpand 1.8.9 同时提供四条兼容入口：
 
 | Schema | 发现入口 | 用途 | 兼容行为 |
 |---|---|---|---|
 | v1 | `assets/Kyeitk/config/**/*.json` | 既有 1.8.9 Kyeitk 格式 | 字段与 0.1.0 保持兼容 |
 | v2 | `assets/kyeitk/redfoxexpand/index.json`，`api_version: 2` | 严格 Definition/manifest | 未知字段、错误类型直接拒绝 config |
 | v3 | 同一 manifest，`api_version: 3` | v2 + Reactive UI | v2 Sprite 必须增加稳定 `id` 才能成为 target |
+| v3.1 | 同一 manifest，`api_version: 3.1` | Scene Graph / Authoring | `elements`、Group、Pivot、符号与显式合成；不自动改写 v3.0 |
 
 大写 v1 与小写 v2/v3 可以同时加载；小写 manifest 不会使 v1 全局失效。没有大写 v1 配置时，
 0.1.0 的旧 Polytone 回退路径仍保留。v2/v3 之间不做字段猜测或自动升级。
@@ -26,7 +26,8 @@ RedFoxExpand 1.8.9 同时提供三条兼容入口：
 }
 ```
 
-- `api_version`：必填 integer，仅允许 `2` 或 `3`；
+- `api_version`：必填 JSON number，仅允许 `2`、`3` 或 `3.1`；字符串和内部编号 `31` 非法；
+- manifest/config 版本必须精确一致，`3` 与 `3.1` 混用会拒绝 config；
 - `configs`：必填 string array，默认无，最多 256 项；
 - 路径必须安全、为小写 `kyeitk:redfoxexpand/config/*.json`，并从声明它的同一个资源包读取；
 - manifest 错误只隔离该 manifest；config 错误隔离该 config；纹理错误隔离对应 Definition；
@@ -112,49 +113,27 @@ Schema v3 的完整变量、表达式语法、Binding、Event、Property、Anima
 - property：`visible`、`alpha`、`translate_x/y`、`scale_x/y`、`rotation_z`；
 - Runtime Context 包含 player、screen、gui 与 `mouse.x/y/gui_x/gui_y/left_down/right_down`。
 
-Reactive target 目前只能是同一 Definition 中的 v3 Sprite ID。表达式、事件、Action、Property 或 target
+v3.0 Reactive target 是同一 Definition 中的 Sprite ID；v3.1 target 可为 Sprite 或 Group。表达式、事件、Action、Property 或 target
 引用错误会在 reload 阶段拒绝 config；运行时表达式错误会按来源 key 限流记录（每个 GUI 同 key 一次、最多 64 个），只回退该次属性求值并保留基础值。所有 transform
 均为临时合成，不修改基础 x/y/width/height；动画停止、GUI 关闭或 generation 替换后返回基础值。
 
-启用 Schema v3 的最小步骤：
+### Schema v3.1 Scene/Authoring API
 
-1. 将 manifest 与 config 的 `api_version` 都设为 `3`；
-2. 为 config 中每个 Sprite 添加 Definition 内唯一的 `id`；
-3. 用 `bindings` 描述持续状态，用 Definition-level `animations` 描述瞬时属性动画；
-4. 用 `behaviors` 监听 Event 并按顺序执行 Action；
-5. F3+T 后查看日志；未知变量、函数、target、animation 或平台不支持的 matcher 会明确拒绝 config。
+v3.1 用 `elements` 替代 `sprites`，元素 `type` 为 `sprite` 或 `group`。Group 通过 `children` 建立单父、
+无环、最大深度 32 的场景树；子元素 Anchor 必须为隐式/显式 `parent`。根可使用 GUI/Screen 九点 Anchor，
+每个节点可定义数值或预设 Pivot。Group 的 visible、alpha、translate、scale、rotation 会被子 Sprite 继承。
 
-```json
-{
-  "api_version": 3,
-  "definitions": [{
-    "id": "example:reactive_inventory",
-    "match": {"exact_menu_class":"net.minecraft.inventory.ContainerPlayer"},
-    "sprites": [{
-      "id":"fire",
-      "texture":{"type":"pack_resource","location":"textures/gui/fire.png"},
-      "anchor":"gui", "x":80, "y":20, "width":32, "height":32
-    }],
-    "bindings": [
-      {"target":"fire","property":"visible","value":"player.is_burning"},
-      {"target":"fire","property":"rotation_z",
-       "value":"clamp((mouse.gui_x - gui.width / 2) * 0.05, -8, 8)","smoothing_ms":120}
-    ]
-  }]
-}
-```
-
-1.8.9 0.2.0 的新增响应式能力包括玩家/GUI/鼠标状态、严格预编译表达式、数值平滑、health/burning/
-`screen.opened` Event、Behavior/Action，以及平移、透明度、缩放、旋转 Property Animation。完整合成顺序、
-事件 payload、预算和安全边界以 [`SCHEMA_V3.md`](SCHEMA_V3.md) 为准。
+`constants` 接受 number/boolean/string；`values` 按声明顺序编译和求值；Binding 额外可读取
+`self.local_x/y/world_x/y/world_center_x/y/width/height`，有父元素时可读取同组 `parent.*`。动画 track
+可用 `compose: replace|add|multiply`，按动画启动序和 track 声明序确定性应用。完整字段、默认值、预算、
+所有可定义数值和错误行为见 [`SCHEMA_V3_1.md`](SCHEMA_V3_1.md)。
 
 以下各节保留 v1 API 的完整字段参考。
 
-## 1. v1 兼容契约
+## 1. v1 兼容入口
 
-0.2.0 继续保留 0.1.0 的大写 Kyeitk 目录和字段语义，包括 `screen_center`、`underlay`、浮点尺寸、
-整图/区域纹理及目录帧动画。已有 v1 材质包不需要为了使用 0.2.0 而迁移到 v2/v3；只有在需要严格
-manifest 合并或响应式能力时才建议使用小写 native 入口。
+`0.2.1` 继续支持 Kyeitk 相对路径贴图、`screen_center`、`underlay`、浮点尺寸和完整纹理取样语义。
+v1 与原生 v2/v3/v3.1 可以并存，资源来源和优先级仍按各自入口独立处理。
 
 ## 2. 文件位置与加载
 
@@ -639,7 +618,7 @@ minecraft:textures/gui/sprites/inventory.png
 2. 检查 JSON 能否被严格解析；
 3. 检查物理目录是否为 `assets/Kyeitk/`，相对纹理路径是否与大小写完全一致；
 4. 临时只保留一张 `custom_textures` 图片；
-5. 使用 `screen_center` 和明显的 `x/y` 验证坐标；
+5. 使用 `screen_center` 和明显的 `x/y` 校准坐标；
 6. 执行 `F3+T` 后重新打开目标 GUI。
 
 ## 14. 当前限制
@@ -651,13 +630,24 @@ minecraft:textures/gui/sprites/inventory.png
 - 不支持独立调整玩家 3D 模型位置；
 - native v2/v3 检查 PNG/像素预算，但不会要求 JSON 声明尺寸等于 PNG 原始尺寸；
 - `menu_type`、`resource_location`、`mod_namespace` matcher 在 1.8.9 明确不可用；
-- Reactive target 仅限 v3 Sprite；
+- v3.0 Reactive target 仅限 Sprite；v3.1 target 可为 Sprite 或 Group；
+- Text 与 Slot 尚不能进入 v3.1 Scene Graph 或作为响应式 target；
 - 无法取得后备文件的自定义 `IResourcePack` 不能提供大写 Kyeitk 目录；
-- 游戏内视觉效果、不同 GUI 缩放及与其他 Mod 的组合效果需由使用者验证。
+- 游戏内视觉效果、不同 GUI 缩放及与其他 Mod 的组合效果可能因环境而异。
 
-## 15. Java 扩展接口
+## 15. 材质包自检清单
 
-这些接口面向后续 RedFoxExpand 模块复用，使用 Java 8；0.2.0 尚不承诺跨大版本二进制稳定性：
+1. 启用材质包并打开目标容器；
+2. 检查所有图片透明背景、位置、缩放和层级；
+3. 检查原版槽位与鼠标点击区域一致；
+4. 检查至少两种 GUI 缩放和窗口尺寸；
+5. 保持 GUI 打开并执行 `F3+T`，确认不累计漂移；
+6. 禁用材质包并重载，确认附加内容完全消失；
+7. 查看日志，确认没有 `Invalid Kyeitk GUI config` 或纹理缺失警告。
+
+## 16. Java 扩展接口
+
+这些接口面向后续 RedFoxExpand 模块复用，使用 Java 8；0.2.1 尚不承诺跨大版本二进制稳定性：
 
 | 接口 | 方法 | 用途与默认行为 |
 |---|---|---|
@@ -670,7 +660,7 @@ minecraft:textures/gui/sprites/inventory.png
 
 `GuiConfigLoader.load(source, reader, resolver)` 按单个 JSON 文件原子返回不可变 `GuiDefinition` 列表。
 
-0.2.0 新增的 Minecraft 无关公开包为 `redfoxexpand.reactive.*`，包括 Expression、EventDetector、Binding、
+0.2.0 起新增的 Minecraft 无关公开包为 `redfoxexpand.reactive.*`，包括 Expression、EventDetector、Binding、
 BehaviorEngine、AnimationController、PropertyPipeline、RuntimeSnapshot 和 RuntimeVariables；
 `redfoxexpand.platform.forge189.*` 只负责把 1.8.9 状态转换成纯 RuntimeSnapshot。资源包协议兼容不等于
 Java 二进制 API 承诺，外部 Mod 不应依赖 client/mixin 内部类。

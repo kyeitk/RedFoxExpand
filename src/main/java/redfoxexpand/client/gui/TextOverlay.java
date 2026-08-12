@@ -69,13 +69,38 @@ public final class TextOverlay {
         }
     }
 
-    public void renderAnchored(int guiLeft, int guiTop, int screenWidth, int screenHeight,
+    public void renderAnchored(int guiLeft, int guiTop, int guiWidth, int guiHeight,
+                               int screenWidth, int screenHeight,
                                boolean matrixAtGuiOrigin) {
-        int originX = anchor == SpriteOverlay.Anchor.SCREEN_CENTER ? screenWidth / 2
-                : anchor == SpriteOverlay.Anchor.SCREEN ? 0 : guiLeft;
-        int originY = anchor == SpriteOverlay.Anchor.SCREEN_CENTER ? screenHeight / 2
-                : anchor == SpriteOverlay.Anchor.SCREEN ? 0 : guiTop;
+        int originX = Math.round(resolveAnchorX(guiLeft, guiWidth, screenWidth));
+        int originY = Math.round(resolveAnchorY(guiTop, guiHeight, screenHeight));
         if (matrixAtGuiOrigin) { originX -= guiLeft; originY -= guiTop; }
         render(originX, originY);
+    }
+
+    private float resolveAnchorX(int guiLeft, int guiWidth, int screenWidth) {
+        if (anchor == SpriteOverlay.Anchor.GUI || anchor == SpriteOverlay.Anchor.GUI_TOP_LEFT) return guiLeft;
+        if (anchor == SpriteOverlay.Anchor.SCREEN || anchor == SpriteOverlay.Anchor.SCREEN_TOP_LEFT
+                || anchor == SpriteOverlay.Anchor.PARENT) return 0.0F;
+        if (anchor == SpriteOverlay.Anchor.SCREEN_CENTER) return screenWidth / 2.0F;
+        boolean gui = anchor.name().startsWith("GUI_");
+        float left = gui ? guiLeft : 0.0F;
+        float width = gui ? guiWidth : screenWidth;
+        if (anchor.name().endsWith("_LEFT")) return left;
+        if (anchor.name().endsWith("_RIGHT")) return left + width;
+        return left + width / 2.0F;
+    }
+
+    private float resolveAnchorY(int guiTop, int guiHeight, int screenHeight) {
+        if (anchor == SpriteOverlay.Anchor.GUI || anchor == SpriteOverlay.Anchor.GUI_TOP_LEFT) return guiTop;
+        if (anchor == SpriteOverlay.Anchor.SCREEN || anchor == SpriteOverlay.Anchor.SCREEN_TOP_LEFT
+                || anchor == SpriteOverlay.Anchor.PARENT) return 0.0F;
+        if (anchor == SpriteOverlay.Anchor.SCREEN_CENTER) return screenHeight / 2.0F;
+        boolean gui = anchor.name().startsWith("GUI_");
+        float top = gui ? guiTop : 0.0F;
+        float height = gui ? guiHeight : screenHeight;
+        if (anchor.name().contains("_TOP_")) return top;
+        if (anchor.name().contains("_BOTTOM_")) return top + height;
+        return top + height / 2.0F;
     }
 }

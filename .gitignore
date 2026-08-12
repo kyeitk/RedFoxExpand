@@ -20,8 +20,7 @@ hs_err_pid*
 *.iws
 *.launch
 
-# Local-only test/resource-pack material. Some fixtures contain third-party
-# assets whose licences forbid redistribution.
+# Local-only resources and development material.
 src/test/
 examples/
 test/
@@ -36,6 +35,7 @@ tools/
 docs/TESTING.md
 docs/ARCHITECTURE.md
 docs/SCHEMA_V3_PORT_REPORT.md
+docs/SCHEMA_V3_1_PORT_REPORT.md
 docs/RESOURCE_ARCHITECTURE_AUDIT.md
 docs/REFACTOR_RECOMMENDATIONS.md
 docs/REFACTOR_PLAN.md
