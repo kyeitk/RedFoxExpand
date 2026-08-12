@@ -1529,23 +1529,6 @@ Expression functions:
   abs min max hypot clamp lerp
 ```
 
-## 31. 材质包自检清单
-
-发布 v3.1 材质包前至少检查：
-
-- Manifest/config 均为数值 `3.1`；
-- 所有 config、ID、路径、引用和预算通过 reload；
-- 正常打开目标 GUI；
-- 所有 Matcher 在目标屏幕真实命中；
-- F3+T 后没有旧 smoother、动画、累加器或 Override 残留；
-- 关闭再打开 GUI 后 transform 回到正确基础状态；
-- 窗口 Resize/第三方 GUI 重定位后 GUI Anchor/Slot 无明显错位；Recipe Book 在 1.7.10 不适用；
-- 缺失纹理和错误 config 按预期隔离/回退；
-- 多动画组合无漂移，非循环动画结束回到正确管线结果；
-- Tooltip 不被错误层遮挡；
-- 原有 Schema v2/v3.0 材质包回归正常；
-- 与目标渲染 Mod 组合时矩阵、颜色与 Alpha 状态正常恢复。
-
 相关文档：
 
 - `docs/resourcepack-api.md`：资源包 API 总览与版本选择；
