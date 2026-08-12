@@ -21,12 +21,12 @@ public final class PropertyPipeline {
         double scaleY = boundScaleY == null ? 1.0D : boundScaleY.doubleValue();
         double rotationZ = boundRotationZ == null ? 0.0D : boundRotationZ.doubleValue();
         if (animation != null) {
-            translateX += animation.getTranslateX();
-            translateY += animation.getTranslateY();
-            if (animation.getAlpha() != null) alpha = animation.getAlpha().doubleValue();
-            scaleX *= animation.getScaleX();
-            scaleY *= animation.getScaleY();
-            rotationZ += animation.getRotationZ();
+            translateX = animation.apply(redfoxexpand.reactive.binding.ReactiveProperty.TRANSLATE_X, translateX);
+            translateY = animation.apply(redfoxexpand.reactive.binding.ReactiveProperty.TRANSLATE_Y, translateY);
+            alpha = animation.apply(redfoxexpand.reactive.binding.ReactiveProperty.ALPHA, alpha);
+            scaleX = animation.apply(redfoxexpand.reactive.binding.ReactiveProperty.SCALE_X, scaleX);
+            scaleY = animation.apply(redfoxexpand.reactive.binding.ReactiveProperty.SCALE_Y, scaleY);
+            rotationZ = animation.apply(redfoxexpand.reactive.binding.ReactiveProperty.ROTATION_Z, rotationZ);
         }
         if (overrideVisible != null) visible = overrideVisible.booleanValue();
         if (overrideAlpha != null) alpha = overrideAlpha.doubleValue();

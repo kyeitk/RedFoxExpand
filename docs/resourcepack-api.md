@@ -1,6 +1,6 @@
 # RedFoxExpand Resource-Pack API（Minecraft 26.2 Fabric）
 
-本文是 26.2 项目的资源发现入口与 Schema v2 基础 Definition 规范。v2/v3 均严格校验：未知字段、错误
+本文是 26.2 项目的资源发现入口与 Schema v2 基础 Definition 规范。v2/v3/v3.1 均严格校验：未知字段、错误
 类型、非有限数字、越界值或路径穿越都会产生带来源的错误，不会静默回退到拼写相近的字段。
 
 ## 0. Protocol 关系
@@ -9,11 +9,14 @@
 v1 = Legacy Compatibility Protocol（26.2 不作为主协议读取）
 v2 = Strict Definition / Manifest Protocol
 v3 = v2 + Stable Element ID + Reactive UI Runtime
+v3.1 = v3 + Scene Graph + Authoring/Composition primitives
 ```
 
 不需要响应式行为的资源包继续使用 v2；需要 RuntimeContext、Expression、Binding、Event、Behavior、Action
 与 Property Animation 时使用 v3。v3 完整规范、默认值、预算、错误/回退和示例见
 [SCHEMA_V3.md](SCHEMA_V3.md)。
+需要 Group/Parent 局部坐标、九点 Anchor、Pivot、Constants、Derived Values、`self/parent` 几何变量或显式
+动画合成时使用 v3.1；完整正式规范见 [SCHEMA_V3_1.md](SCHEMA_V3_1.md)。
 
 ### Schema v3 鼠标状态入口
 
@@ -115,7 +118,7 @@ assets/kyeitk/redfoxexpand/index.json
 
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---:|---|
-| `api_version` | integer | 必填 | `2` 或 `3`；它引用的 config 必须使用相同版本 |
+| `api_version` | number | 必填 | `2`、`3` 或 `3.1`；它引用的 config 必须使用相同版本 |
 | `configs` | string[] | 必填 | 最多 256 个；必须位于 `kyeitk:redfoxexpand/config/` 且以 `.json` 结尾 |
 
 Mod 使用 `ResourceManager.getResourceStack` 读取所有 manifest，并只从同一个 `sourcePackId` 取得该
@@ -241,7 +244,7 @@ Texture 永远是显式对象：
 | 类型 | 解析 |
 |---|---|
 | `resource_location` | 原样作为 raw texture ID；必须带 namespace |
-| `gui_sprite` | 原样作为 GUI atlas sprite ID；验证对应 `textures/gui/sprites/<path>.png` |
+| `gui_sprite` | 原样作为 GUI atlas sprite ID；校验对应 `textures/gui/sprites/<path>.png` |
 | `pack_resource` | 有 namespace 时原样；相对路径映射到 `kyeitk:redfoxexpand/<path>` |
 
 不存在 `.png`/`textures/` 自动猜测。Sprite 字段：
@@ -295,7 +298,7 @@ Texture 永远是显式对象：
 `full_texture=true` 会把每一帧完整缩放到 Sprite 的目标 `width×height`，不会自动保持源图比例。动画各帧
 应使用一致画布比例，目标宽高也应保持该比例；例如 `1348×1348` 帧应使用正方形目标尺寸。
 
-JSON/资源存在性/PNG 在 reload 阶段处理；运行阶段只按时间选择已验证 Identifier，不访问文件系统。
+JSON、资源存在性与 PNG 在 reload 阶段处理；运行阶段只按时间选择已校验 Identifier，不访问文件系统。
 
 ## 8. Text
 
@@ -344,6 +347,8 @@ reload 未能形成候选 generation 时保留上一代。成功 prepare 后一�
 
 Schema v3 在这些 v2 预算之上增加 binding/behavior/property-animation/expression/active-instance 预算；精确
 数值和超限行为见 [Schema v3 Budget](SCHEMA_V3.md#21-budget)。
+Schema v3.1 另增加 elements/groups/children/depth/constants/derived 预算，并在发布 generation 前校验场景
+引用、单父级、无环、Anchor/Pivot 和动画 compose；见 [Schema v3.1 预算](SCHEMA_V3_1.md#25-全部预算与安全限制)。
 
 ## 10. 兼容性与 v1 迁移
 
@@ -359,7 +364,16 @@ Schema v3 在这些 v2 预算之上增加 binding/behavior/property-animation/ex
 8. 动画 metadata 改为 Sprite 内显式 animation；
 9. 使用 namespaced definition ID 与 operation。
 
-旧 1.8.9/1.7.10 项目继续维护各自协议；新项目不会用反射、ZIP 扫描或猜测式路径模拟旧行为。
+旧 1.8.9/1.7.10 项目继续维护各自 v1/v2 兼容协议，并已在 `0.2.0` 回迁同源 Schema v3 Reactive
+语义；26.2 不会用反射、ZIP 扫描或猜测式路径模拟旧版资源发现。平台渲染、F3+T 与其他 Mod 组合的
+表现可能因运行环境而异。
 
 从 v2 升级 v3 时保留所有基础字段，只需同步 manifest/config version、为 v3 Sprite 添加稳定 ID，并按需
 增加 `bindings`、Definition-level `animations` 与 `behaviors`。不要把 Sprite 内纹理帧 `animation` 改名。
+
+26.2 `0.2.1` 已正式实现 Schema v3.1 的 Scene Graph、Group、Parent/Child、Pivot、Constants、Derived
+Values、`self.*`/`parent.*` 与动画合成；迁移规则和完整错误/回退见 [SCHEMA_V3_1.md](SCHEMA_V3_1.md)。
+Inspector、Visual Editor、HUD/Widget、Component、Clip/Scroll 尚不属于当前 API。
+
+Schema v3.1 当前只在 26.2 `0.2.1` 接受。1.8.9/1.7.10 `0.2.0` 仍只接受 v2/v3.0；材质包必须按目标
+版本选择协议，不能依赖旧项目自动降级 v3.1。

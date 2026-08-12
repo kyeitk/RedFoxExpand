@@ -48,7 +48,8 @@ public record ResolvedModifier(
             textRules.addAll(definition.textRules());
         }
         sprites.sort(Comparator.comparing(GuiDefinition.Sprite::layer)
-                .thenComparingDouble(GuiDefinition.Sprite::z));
+                .thenComparingDouble(GuiDefinition.Sprite::z)
+                .thenComparingInt(GuiDefinition.Sprite::sceneOrder));
         return new ResolvedModifier(new GuiDefinition.Geometry(x, y, width, height),
                 slots, sprites, texts, textRules, matched);
     }

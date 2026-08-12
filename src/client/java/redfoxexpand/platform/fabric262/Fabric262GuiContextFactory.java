@@ -89,3 +89,4 @@ public final class Fabric262GuiContextFactory {
 
     private record Hierarchy(List<String> full, List<String> simple) { }
 }
+

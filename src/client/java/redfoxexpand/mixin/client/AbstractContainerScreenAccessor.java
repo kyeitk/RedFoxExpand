@@ -19,3 +19,4 @@ public interface AbstractContainerScreenAccessor {
     @Accessor("inventoryLabelY") int redfoxexpand$getInventoryLabelY();
     @Accessor("playerInventoryTitle") Component redfoxexpand$getPlayerInventoryTitle();
 }
+

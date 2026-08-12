@@ -1,7 +1,7 @@
 # RedFoxExpand Schema v3：Reactive UI Protocol
 
-本文是 RedFoxExpand 26.2 已实现的 Schema v3 公开规范。1.8.9 与 1.7.10 回迁仍在计划中，尚不能视为
-已支持；Minecraft/Fabric/Forge 类名只属于各平台 adapter，不属于协议语义。
+本文是 RedFoxExpand Schema v3 公开规范。26.2、1.8.9 与 1.7.10 均已提供各自的平台 adapter；
+Minecraft/Fabric/Forge 类名只属于平台实现，不属于协议语义。Schema v3.1 的场景图扩展目前仅适用于 26.2。
 
 ## 1. 设计原则
 

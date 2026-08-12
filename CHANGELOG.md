@@ -3,6 +3,29 @@
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。Minecraft 26.2 版本使用
 `vX.Y.Z-mc26.2` Git Tag。
 
+## [0.2.1-mc26.2] - 2026-08-12
+
+### Added
+
+- 新增严格 Schema v3.1；manifest/config 使用数值 `api_version: 3.1`，v2/v3.0 格式与行为保持不变；
+- 新增统一 `elements`：`sprite` 与非渲染 `group` 共用稳定 ID；
+- 新增 Group `children` 场景树、单父级关系、局部坐标和父级 translate/scale/rotation/visible/alpha 继承；
+- 新增 GUI/Screen 九点 Anchor、Element Pivot，以及 `layer → z → scene order` 稳定绘制顺序；
+- 新增 Definition-local `constants`、按声明顺序求值的 `values`；
+- 新增 Binding 中只读的 `self.*` / `parent.*` 基础布局几何；
+- Property Animation track 新增显式 `compose: replace|add|multiply`；
+- 新增 element/group/children/depth/constants/derived 预算与对应错误隔离；
+- 新增完整 Schema v3.1 协议、迁移说明和场景组合示例。
+
+### Changed
+
+- Group 可作为 Binding、Property Animation 与 Action target，子树继承 Group 效果，不再为每个 Sprite
+  重复声明相同变换；
+- 属性顺序明确为 Base → Binding → Animation Composition → Runtime Override → Scene Transform；
+- 复杂人物界面可用 Group 表达头部、眼睛、手部等层级，并用 Constants/Derived Values 减少重复数字和表达式；
+- README 新增 Schema v3.1 新要素、项目方向、未实现列表与 GIF 项目实例演示；
+- 版本号更新为 `0.2.1`。
+
 ## [0.2.0-mc26.2] - 2026-08-10
 
 ### Added
@@ -23,12 +46,7 @@
 
 - 配方书展开/收起与 resize 在候选不变时保留当前动画、事件累计器和响应式状态；
 - F3+T、候选集合变化、玩家切换或 Screen 重开会创建全新 runtime，避免跨 generation 泄漏状态；
-- 公开功能清单与未实现列表按 Schema v3 MVP 的实际边界更新。
-
-### Release
-
-- `26.2` 分支继续只发布主源码、客户端源码、构建脚本、公开文档与发布 JAR；
-- 自动测试代码、测试资源、示例材质包、内部审计/实施文档和受限制第三方素材不进入公开上传版。
+- 公开功能清单与未实现列表按 Schema v3 的实际边界更新。
 
 ## [0.1.0-mc26.2] - 2026-08-09
 
@@ -49,8 +67,3 @@
 - 修复扩展 GUI 与 Slot 在 reload、resize 或其他布局变化后累计漂移的问题；
 - 修复配方书展开/收起时破限纹理与 Slot 不同步的问题，`gui` 锚点改用实时容器原点；
 - 修复动画目标尺寸比例错误导致正方形帧被压扁的问题。
-
-### Release
-
-- 公开 `26.2` 分支仅包含主源码、客户端源码、构建脚本、公开文档和发布 JAR；
-- 排除自动验证代码、示例/验证材质包、迁移审计、本地运行目录和受限制第三方素材。

@@ -10,3 +10,4 @@ public interface SlotAccessor {
     @Mutable @Accessor("x") void redfoxexpand$setX(int value);
     @Mutable @Accessor("y") void redfoxexpand$setY(int value);
 }
+

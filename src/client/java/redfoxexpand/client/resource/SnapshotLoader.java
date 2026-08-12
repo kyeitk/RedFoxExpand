@@ -23,6 +23,7 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -92,18 +93,7 @@ public final class SnapshotLoader {
         Set<String> unknown = new HashSet<>(json.keySet());
         unknown.removeAll(MANIFEST_FIELDS);
         if (!unknown.isEmpty()) throw new IllegalArgumentException("unknown manifest field(s): " + unknown);
-        if (!json.has("api_version") || !json.get("api_version").isJsonPrimitive()
-                || !json.get("api_version").getAsJsonPrimitive().isNumber()) {
-            throw new IllegalArgumentException("manifest api_version must be integer 2 or 3");
-        }
-        double rawApiVersion = json.get("api_version").getAsDouble();
-        if (!Double.isFinite(rawApiVersion) || rawApiVersion != Math.rint(rawApiVersion)) {
-            throw new IllegalArgumentException("manifest api_version must be integer 2 or 3");
-        }
-        int apiVersion = (int) rawApiVersion;
-        if (apiVersion != 2 && apiVersion != 3) {
-            throw new IllegalArgumentException("manifest api_version must be 2 or 3");
-        }
+        int apiVersion = parseApiVersion(json.get("api_version"));
         JsonArray configs = json.getAsJsonArray("configs");
         if (configs == null || configs.size() > ResourceLimits.MAX_MANIFEST_CONFIGS) {
             throw new IllegalArgumentException("manifest configs must contain at most " + ResourceLimits.MAX_MANIFEST_CONFIGS + " entries");
@@ -128,6 +118,18 @@ public final class SnapshotLoader {
             throw new IllegalArgumentException("pack config count exceeds " + ResourceLimits.MAX_CONFIGS_PER_PACK);
         }
         return new ParsedManifest(apiVersion, List.copyOf(result));
+    }
+
+    static int parseApiVersion(JsonElement value) {
+        if (value == null || !value.isJsonPrimitive()
+                || !value.getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException("manifest api_version must be 2, 3, or 3.1");
+        }
+        BigDecimal raw = value.getAsBigDecimal().stripTrailingZeros();
+        if (raw.compareTo(new BigDecimal("2")) == 0) return 2;
+        if (raw.compareTo(new BigDecimal("3")) == 0) return 3;
+        if (raw.compareTo(new BigDecimal("3.1")) == 0) return 31;
+        throw new IllegalArgumentException("manifest api_version must be 2, 3, or 3.1");
     }
 
     private void loadConfig(ResourceManager manager, Resource resource, Identifier location,

@@ -8,6 +8,10 @@ public final class ResourceLimits {
     public static final int MAX_CONFIGS_PER_PACK = 256;
     public static final int MAX_DEFINITIONS_PER_FILE = 256;
     public static final int MAX_SPRITES_PER_DEFINITION = 256;
+    public static final int MAX_ELEMENTS_PER_DEFINITION = 256;
+    public static final int MAX_GROUPS_PER_DEFINITION = 128;
+    public static final int MAX_SCENE_DEPTH = 32;
+    public static final int MAX_CHILDREN_PER_GROUP = 256;
     public static final int MAX_SLOT_RULES_PER_DEFINITION = 256;
     public static final int MAX_TEXTS_PER_DEFINITION = 128;
     public static final int MAX_TEXT_RULES_PER_DEFINITION = 64;

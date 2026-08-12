@@ -32,6 +32,12 @@ final class GuiTextureRenderer {
 
     private static void renderSprite(GuiRuntimeState state, GuiGraphicsExtractor graphics,
                                      GuiDefinition.Sprite sprite, long now) {
+        SceneRenderState scene = state.reactiveRuntime == null
+                ? null : state.reactiveRuntime.scene(sprite, now);
+        if (scene != null) {
+            renderSceneSprite(state, graphics, sprite, scene, now);
+            return;
+        }
         FinalRenderProperties properties = state.reactiveRuntime == null
                 ? FinalRenderProperties.BASE : state.reactiveRuntime.properties(sprite, now);
         if (!properties.isVisible() || properties.getAlpha() <= 0.0D) return;
@@ -70,6 +76,56 @@ final class GuiTextureRenderer {
             }
         } finally {
             if (rotated) graphics.pose().popMatrix();
+        }
+    }
+
+    private static void renderSceneSprite(GuiRuntimeState state, GuiGraphicsExtractor graphics,
+                                          GuiDefinition.Sprite sprite, SceneRenderState scene, long now) {
+        Identifier texture = textureAt(state, sprite, now);
+        if (texture == null) return;
+        double alpha = 1.0D;
+        graphics.pose().pushMatrix();
+        try {
+            boolean root = true;
+            for (SceneRenderState.Node node : scene.nodes()) {
+                FinalRenderProperties properties = node.properties;
+                if (!properties.isVisible()) return;
+                alpha *= properties.getAlpha();
+                if (root) {
+                    graphics.pose().translate((float) anchorX(state, node.anchor),
+                            (float) anchorY(state, node.anchor));
+                    root = false;
+                }
+                float pivotX = (float) node.pivot.x();
+                float pivotY = (float) node.pivot.y();
+                graphics.pose().translate((float) (node.x + properties.getTranslateX()) + pivotX,
+                        (float) (node.y + properties.getTranslateY()) + pivotY);
+                if (properties.getRotationZ() != 0.0D) {
+                    graphics.pose().rotate((float) Math.toRadians(properties.getRotationZ()));
+                }
+                graphics.pose().scale((float) properties.getScaleX(), (float) properties.getScaleY());
+                graphics.pose().translate(-pivotX, -pivotY);
+            }
+            if (alpha <= 0.0D) return;
+            int width = Math.max(0, Math.round((float) sprite.width()));
+            int height = Math.max(0, Math.round((float) sprite.height()));
+            if (width == 0 || height == 0) return;
+            int color = multiplyAlpha(sprite.color(), alpha);
+            if (sprite.texture().type() == GuiDefinition.ResourceType.GUI_SPRITE) {
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, texture, 0, 0, width, height, color);
+            } else if (sprite.fullTexture()) {
+                graphics.blit(RenderPipelines.GUI_TEXTURED, texture, 0, 0, 0.0F, 0.0F,
+                        width, height, width, height, width, height, color);
+            } else {
+                graphics.blit(RenderPipelines.GUI_TEXTURED, texture, 0, 0,
+                        (float) sprite.u(), (float) sprite.v(), width, height,
+                        Math.max(1, Math.round((float) sprite.sourceWidth())),
+                        Math.max(1, Math.round((float) sprite.sourceHeight())),
+                        Math.max(1, Math.round((float) sprite.textureWidth())),
+                        Math.max(1, Math.round((float) sprite.textureHeight())), color);
+            }
+        } finally {
+            graphics.pose().popMatrix();
         }
     }
 
@@ -132,19 +188,33 @@ final class GuiTextureRenderer {
     }
 
     private static int anchorX(GuiRuntimeState state, GuiDefinition.Anchor anchor) {
-        return switch (anchor) {
-            case GUI -> state.baseContext.leftPos() + state.leftDelta;
-            case SCREEN_CENTER -> state.baseContext.screenWidth() / 2;
-            case SCREEN -> 0;
-        };
+        int guiX = state.baseContext.leftPos() + state.leftDelta;
+        int guiWidth = state.baseContext.imageWidth() + state.modifier.geometry().widthOffset();
+        if (anchor == GuiDefinition.Anchor.GUI || anchor == GuiDefinition.Anchor.GUI_TOP_LEFT) return guiX;
+        if (anchor == GuiDefinition.Anchor.SCREEN || anchor == GuiDefinition.Anchor.SCREEN_TOP_LEFT
+                || anchor == GuiDefinition.Anchor.PARENT) return 0;
+        if (anchor == GuiDefinition.Anchor.SCREEN_CENTER) return state.baseContext.screenWidth() / 2;
+        boolean gui = anchor.name().startsWith("GUI_");
+        int left = gui ? guiX : 0;
+        int width = gui ? guiWidth : state.baseContext.screenWidth();
+        if (anchor.name().endsWith("_LEFT")) return left;
+        if (anchor.name().endsWith("_RIGHT")) return left + width;
+        return left + width / 2;
     }
 
     private static int anchorY(GuiRuntimeState state, GuiDefinition.Anchor anchor) {
-        return switch (anchor) {
-            case GUI -> state.baseContext.topPos() + state.topDelta;
-            case SCREEN_CENTER -> state.baseContext.screenHeight() / 2;
-            case SCREEN -> 0;
-        };
+        int guiY = state.baseContext.topPos() + state.topDelta;
+        int guiHeight = state.baseContext.imageHeight() + state.modifier.geometry().heightOffset();
+        if (anchor == GuiDefinition.Anchor.GUI || anchor == GuiDefinition.Anchor.GUI_TOP_LEFT) return guiY;
+        if (anchor == GuiDefinition.Anchor.SCREEN || anchor == GuiDefinition.Anchor.SCREEN_TOP_LEFT
+                || anchor == GuiDefinition.Anchor.PARENT) return 0;
+        if (anchor == GuiDefinition.Anchor.SCREEN_CENTER) return state.baseContext.screenHeight() / 2;
+        boolean gui = anchor.name().startsWith("GUI_");
+        int top = gui ? guiY : 0;
+        int height = gui ? guiHeight : state.baseContext.screenHeight();
+        if (anchor.name().contains("_TOP_")) return top;
+        if (anchor.name().contains("_BOTTOM_")) return top + height;
+        return top + height / 2;
     }
 
     static int multiplyAlpha(int color, double alpha) {

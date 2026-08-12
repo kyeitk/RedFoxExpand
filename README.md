@@ -8,14 +8,18 @@
 [![Status](https://img.shields.io/badge/Status-Development-yellow.svg)](#)
 
 RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **26.2 Fabric** 客户端 Mod。它允许材质包作者通过
-原生小写资源域、Schema v2/v3 JSON 配置和现代渲染管线修改容器 GUI，而不必修改或重新编译 Mod。
+原生小写资源域、Schema v2/v3/v3.1 JSON 配置和现代渲染管线修改容器 GUI，而不必修改或重新编译 Mod。
 
-- 当前版本：`0.2.0`（Git Tag：`v0.2.0-mc26.2`）
+- 当前版本：`0.2.1`（Git Tag：`v0.2.1-mc26.2`）
 - Minecraft：`26.2`
 - Fabric Loader：`0.19.3`
 - Fabric API：`0.156.0+26.2`
 - 运行端：仅客户端
 - Java：25
+
+## 项目实例演示
+
+![RedFoxExpand 响应式角色界面演示](docs/assets/redfoxexpand-demo.gif)
 
 ## 功能状态
 
@@ -34,19 +38,24 @@ RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **26.2 Fabric** 客户�
 - 支持玩家、屏幕、GUI、鼠标与按键状态，以及 health/burning/screen 生命周期事件；
 - 支持 `visible`、`alpha`、平移、缩放、旋转绑定和数值平滑；
 - 支持属性动画、`linear` / `smoothstep` 插值、行为条件与安全动作；
+- Schema v3.1 新增统一 `elements`、Group/Parent 场景树、局部坐标和父级变换/显隐/透明度继承；
+- 支持 GUI/Screen 九点 Anchor、元素 Pivot，以及 `layer → z → scene order` 稳定绘制顺序；
+- 支持 Definition-local Constants、按声明顺序求值的 Derived Values，以及 Binding 中的
+  `self.*` / `parent.*` 基础布局几何；
+- 属性动画支持显式 `replace` / `add` / `multiply` 合成，Group 动画可由整个子树继承；
 - Reactive Core 独立保持 Java 8 源兼容，平台层仍使用 Minecraft 26.2 所需的 Java 25；
 - F3+T 采用不可变 generation 原子切换，成功后统一释放上一代引用；
 - 全部 GUI 绘制使用 `GuiGraphicsExtractor` 与 `RenderPipelines`，不直接调用 OpenGL/LWJGL。
 
 ### 下一步
 
-- HUD API 与 Widget/Component；
-- Semantic Slot，以及 text/Slot 的响应式 target；
-- width、height、color、Texture State 和自定义旋转枢轴；
-- 自定义变量/事件、Timer、User Function 与 `every.mode=repeat`；
-- 面向材质包作者的 Inspector；
-- 将 Schema v3 的共同能力回迁至 1.8.9 与 1.7.10；
-- 更完整的 OpenGL/Vulkan、第三方 Screen 和生产实例兼容矩阵。
+- 更清晰的结构化诊断与离线 Validator；
+- 面向材质包作者的 Inspector 与属性管线视图；
+- Layout Container、Clip/Scroll 与 Component 复用；
+- Semantic Slot，以及 Text/Slot 的响应式 target；
+- HUD API 与 Widget；
+- Texture State、width/height/color Binding 与更多安全事件/动作；
+- 可读取并导出正式 Schema JSON 的可视化编辑器。
 
 完整状态和边界见 [`docs/FEATURES.md`](docs/FEATURES.md)。
 
@@ -70,16 +79,16 @@ Runtime Context  ──┘                                      -> Layout Engine
 ```
 
 项目将从“材质包辅助 Mod”继续发展为 **Minecraft Resource Pack UI Framework**，并最终形成可复用的
-**Minecraft Resource Pack UI Runtime**。当前优先级依次为完善 Expression Engine、建设 HUD API、实现
-Semantic Slot，以及为材质包作者提供 Inspector；已完成和未实现边界以本文及功能文档为准。
+**Minecraft Resource Pack UI Runtime**。Schema v3.1 已让复杂界面从平铺 Sprite 进入 Scene Graph；下一阶段
+优先改善诊断、Inspector、布局与复用能力，再在同一核心上扩展 Semantic Slot、HUD 和 Widget。
 
 ## 安装
 
 1. 安装 Minecraft 26.2、Fabric Loader `0.19.3` 和 Fabric API `0.156.0+26.2`；
 2. 从 [GitHub Releases](https://github.com/kyeitk/RedFoxExpand/releases) 下载
-   `RedFoxExpand-26.2-0.2.0.jar`；
+   `RedFoxExpand-26.2-0.2.1.jar`；
 3. 将 JAR 放入 Minecraft 实例的 `mods/` 目录；
-4. 启动游戏并启用符合 Schema v2 或 v3 的 RedFoxExpand 材质包。
+4. 启动游戏并启用符合 Schema v2、v3 或 v3.1 的 RedFoxExpand 材质包。
 
 Mod 不要求服务端安装。建议在新增或修改配置后执行 F3+T。
 
@@ -192,6 +201,56 @@ Sprite 增加 Definition 内唯一的 `id`。下面的配置会在玩家着火�
 v3 表达式在 reload 时预编译并严格校验，不支持脚本、反射、文件、网络或任意函数调用。完整 Runtime
 Context、表达式语法、属性、事件、动画、行为、预算及迁移说明见
 [`docs/SCHEMA_V3.md`](docs/SCHEMA_V3.md)。
+
+## Schema v3.1 场景图
+
+Schema v3.1 面向由多个图层组成的角色、面板和动态界面。将 manifest 与 config 的 `api_version` 都设为
+数值 `3.1`，使用统一 `elements` 数组，并通过 Group 组织可共同移动、缩放、旋转、显隐或改变透明度的子树：
+
+```json
+{
+  "api_version": 3.1,
+  "definitions": [{
+    "id": "example:character",
+    "match": {"menu_type":"minecraft:player"},
+    "constants": {"turn_limit": 4},
+    "values": {
+      "head_turn": "clamp((mouse.x - screen.width / 2) * 0.01, -turn_limit, turn_limit)"
+    },
+    "elements": [
+      {
+        "id":"character_root", "type":"group",
+        "anchor":"screen_bottom_center", "x":-80, "y":-160,
+        "width":160, "height":160,
+        "children":["body", "head_group"]
+      },
+      {
+        "id":"body", "type":"sprite",
+        "texture":{"type":"pack_resource","location":"textures/gui/body.png"},
+        "width":160, "height":160, "layer":"foreground"
+      },
+      {
+        "id":"head_group", "type":"group", "width":160, "height":160,
+        "children":["head"]
+      },
+      {
+        "id":"head", "type":"sprite",
+        "texture":{"type":"pack_resource","location":"textures/gui/head.png"},
+        "width":160, "height":160, "layer":"foreground"
+      }
+    ],
+    "bindings": [{
+      "target":"head_group", "property":"rotation_z",
+      "value":"head_turn", "smoothing_ms":180
+    }]
+  }]
+}
+```
+
+根 Element 可使用 GUI/Screen 九点 Anchor，子 Element 使用父级局部坐标；Pivot 决定旋转和缩放中心。
+Constants 消除重复数字，Derived Values 复用表达式，`self.*` / `parent.*` 为鼠标跟随等效果提供稳定基础
+几何。完整字段、默认值、场景继承、动画合成和 v3.0 迁移步骤见
+[`docs/SCHEMA_V3_1.md`](docs/SCHEMA_V3_1.md)。
 
 ## 完整配置示例
 
@@ -307,7 +366,7 @@ $env:Path = "$env:JAVA_HOME\bin;$env:Path"
 Gradle `9.5.1`。发布 JAR：
 
 ```text
-build/libs/RedFoxExpand-26.2-0.2.0.jar
+build/libs/RedFoxExpand-26.2-0.2.1.jar
 ```
 
 ## 文档
@@ -315,6 +374,7 @@ build/libs/RedFoxExpand-26.2-0.2.0.jar
 - [功能状态与实现边界](docs/FEATURES.md)
 - [材质包开发者 API](docs/resourcepack-api.md)
 - [Schema v3 响应式 UI 协议](docs/SCHEMA_V3.md)
+- [Schema v3.1 场景图与创作协议](docs/SCHEMA_V3_1.md)
 - [GUI 静态、动画与 Alpha 格式](docs/GUI_RESOURCE_FORMAT.md)
 - [材质包目录与迁移规范](docs/RESOURCE_PACK_STRUCTURE.md)
 - [任意位置自定义贴图](docs/custom-textures.md)
@@ -327,12 +387,15 @@ build/libs/RedFoxExpand-26.2-0.2.0.jar
 - 不扫描旧 `assets/Kyeitk/`，旧版配置必须迁移至原生小写 Schema v2；
 - `imageWidth/imageHeight` 保持原版 final 值，扩展尺寸使用独立逻辑 geometry；
 - Sprite 纹理帧动画条件仍只有 `always` 和 `never`；动态条件请使用 Schema v3；
-- Schema v3 尚不支持 width/height/color 绑定、Texture State、自定义旋转枢轴、text/Slot target、
-  自定义变量/事件、Timer、User Function、循环/递归或 `every.mode=repeat`；
-- 不支持按钮/widget 或玩家 3D 模型独立偏移，旧版本尚未完成 v3 回迁；
-- OpenGL/Vulkan 已确认启动与资源 reload，但完整 GUI/交互矩阵仍需逐项验证。
+- Schema v3.1 Scene Graph 当前只作用于 Sprite/Group；Text 和 Slot 尚不能进入场景树或作为响应式 target；
+- 不支持 HUD、Widget、Semantic Slot、Layout Container、Component、Clip/Scroll 或 Inspector；
+- 尚无 Texture State、width/height/color Binding、自定义变量/事件、Timer、User Function、循环/递归或
+  `every.mode=repeat`；
+- `self.*` / `parent.*` 提供静态基础布局几何，不读取本帧 Binding/Animation 后的最终矩阵；
+- Schema v3.1 当前仅适用于 26.2；1.8.9/1.7.10 仍使用 v2/v3.0；
+- OpenGL/Vulkan、第三方 Screen 与不同 GUI 布局的表现可能因环境组合而异。
 
 ## 许可
 
 当前仓库遵循 `CC BY-NC-SA 4.0` 协议；除非权利人另行授权，源代码默认保留所有权利。仓库不包含
-第三方材质包、测试资源或受限制美术素材。
+第三方材质包或受限制美术素材。

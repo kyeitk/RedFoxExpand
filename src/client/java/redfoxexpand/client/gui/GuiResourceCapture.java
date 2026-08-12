@@ -31,3 +31,4 @@ public final class GuiResourceCapture {
 
     private record Capture(Screen screen, Identifier resource) { }
 }
+

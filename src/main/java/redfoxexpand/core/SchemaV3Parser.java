@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import redfoxexpand.reactive.ReactiveDefinition;
 import redfoxexpand.reactive.ReactiveLimits;
 import redfoxexpand.reactive.animation.Interpolation;
+import redfoxexpand.reactive.animation.CompositionMode;
 import redfoxexpand.reactive.animation.PropertyAnimation;
 import redfoxexpand.reactive.animation.PropertyKeyframe;
 import redfoxexpand.reactive.animation.PropertyTrack;
@@ -22,12 +23,15 @@ import redfoxexpand.reactive.binding.ReactiveProperty;
 import redfoxexpand.reactive.event.RuntimeEvent;
 import redfoxexpand.reactive.expression.CompiledExpression;
 import redfoxexpand.reactive.expression.ExpressionCompiler;
+import redfoxexpand.reactive.expression.DerivedValue;
 import redfoxexpand.reactive.runtime.Capability;
 import redfoxexpand.reactive.runtime.RuntimeVariables;
 import redfoxexpand.reactive.value.ValueType;
+import redfoxexpand.reactive.value.RuntimeValue;
 
 import java.io.Reader;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,6 +53,16 @@ public final class SchemaV3Parser {
             "id", "texture", "animation", "x", "y", "z", "u", "v", "width", "height",
             "source_width", "source_height", "texture_width", "texture_height", "full_texture",
             "color", "layer", "anchor");
+    private static final Set<String> V31_DEFINITION_FIELDS = fields(
+            "id", "operation", "priority", "match", "geometry", "slot_modifiers",
+            "elements", "texts", "text_rules", "constants", "values",
+            "bindings", "animations", "behaviors");
+    private static final Set<String> V31_SPRITE_FIELDS = fields(
+            "id", "type", "texture", "animation", "x", "y", "z", "u", "v",
+            "width", "height", "source_width", "source_height", "texture_width",
+            "texture_height", "full_texture", "color", "layer", "anchor", "pivot");
+    private static final Set<String> V31_GROUP_FIELDS = fields(
+            "id", "type", "children", "x", "y", "width", "height", "anchor", "pivot");
     private static final Set<String> EVENTS = fields(
             RuntimeEvent.HEALTH_DECREASED, RuntimeEvent.HEALTH_INCREASED,
             RuntimeEvent.STARTED_BURNING, RuntimeEvent.STOPPED_BURNING,
@@ -80,9 +94,9 @@ public final class SchemaV3Parser {
         checkDepth(parsed, 0, source);
         JsonObject root = object(parsed, source + " root");
         rejectUnknown(root, ROOT_FIELDS, source + " root");
-        if (requiredInteger(root, "api_version", source) != 3) {
-            throw failure(source, "api_version must be 3");
-        }
+        int apiVersion = requiredApiVersion(root, source);
+        if (apiVersion == 31) return parseV31(root, source);
+        if (apiVersion != 3) throw failure(source, "api_version must be 3 or 3.1");
         JsonArray definitions = requiredArray(root, "definitions", source);
         if (definitions.size() > ResourceLimits.MAX_DEFINITIONS_PER_FILE) {
             throw failure(source, "definitions exceeds " + ResourceLimits.MAX_DEFINITIONS_PER_FILE);
@@ -124,6 +138,374 @@ public final class SchemaV3Parser {
         return Collections.unmodifiableList(result);
     }
 
+    private List<SchemaV2Parser.ParsedDefinition> parseV31(JsonObject root, String source) {
+        JsonArray definitions = requiredArray(root, "definitions", source);
+        if (definitions.size() > ResourceLimits.MAX_DEFINITIONS_PER_FILE) {
+            throw failure(source, "definitions exceeds " + ResourceLimits.MAX_DEFINITIONS_PER_FILE);
+        }
+
+        JsonObject baseRoot = new JsonObject();
+        baseRoot.addProperty("api_version", Integer.valueOf(2));
+        JsonArray baseDefinitions = new JsonArray();
+        baseRoot.add("definitions", baseDefinitions);
+        for (int index = 0; index < definitions.size(); index++) {
+            String definitionLabel = label(source, index);
+            JsonObject definition = object(definitions.get(index), definitionLabel);
+            rejectUnknown(definition, V31_DEFINITION_FIELDS, definitionLabel);
+            JsonArray elements = optionalArray(definition, "elements", definitionLabel);
+            if (elements.size() > ResourceLimits.MAX_ELEMENTS_PER_DEFINITION) {
+                throw failure(definitionLabel, "elements exceeds "
+                        + ResourceLimits.MAX_ELEMENTS_PER_DEFINITION);
+            }
+            JsonObject base = definition.deepCopy();
+            base.remove("elements");
+            base.remove("constants");
+            base.remove("values");
+            base.remove("bindings");
+            base.remove("animations");
+            base.remove("behaviors");
+            JsonArray sprites = new JsonArray();
+            for (int elementIndex = 0; elementIndex < elements.size(); elementIndex++) {
+                String elementLabel = definitionLabel + ".elements[" + elementIndex + "]";
+                JsonObject element = object(elements.get(elementIndex), elementLabel);
+                String type = requiredString(element, "type", elementLabel);
+                if ("sprite".equals(type)) {
+                    rejectUnknown(element, V31_SPRITE_FIELDS, elementLabel);
+                    JsonObject sprite = element.deepCopy();
+                    sprite.remove("id");
+                    sprite.remove("type");
+                    sprite.remove("pivot");
+                    if (sprite.has("anchor")) {
+                        sprite.addProperty("anchor", compatibleBaseAnchor(
+                                requiredString(sprite, "anchor", elementLabel), elementLabel));
+                    }
+                    sprites.add(sprite);
+                } else if ("group".equals(type)) {
+                    rejectUnknown(element, V31_GROUP_FIELDS, elementLabel);
+                } else {
+                    throw failure(elementLabel, "unknown element type: " + type);
+                }
+            }
+            base.add("sprites", sprites);
+            baseDefinitions.add(base);
+        }
+
+        List<SchemaV2Parser.ParsedDefinition> bases = baseParser.parse(
+                new StringReader(baseRoot.toString()), source + " [v3.1 base]");
+        List<SchemaV2Parser.ParsedDefinition> result = new ArrayList<SchemaV2Parser.ParsedDefinition>();
+        for (int index = 0; index < definitions.size(); index++) {
+            String definitionLabel = label(source, index);
+            JsonObject json = definitions.get(index).getAsJsonObject();
+            SchemaV2Parser.ParsedDefinition base = bases.get(index);
+            ParsedScene scene = parseScene(json, base.definition().sprites(), definitionLabel);
+            Symbols symbols = parseSymbols(json, definitionLabel);
+            Map<String, ValueType> bindingTypes = new LinkedHashMap<String, ValueType>(symbols.types);
+            bindingTypes.putAll(elementVariableTypes());
+            Set<String> unsupportedState = unsupportedVariables(RuntimeVariables.stateTypes().keySet());
+            ExpressionCompiler bindingCompiler = new ExpressionCompiler(bindingTypes, unsupportedState);
+            ExpressionCompiler stateCompiler = new ExpressionCompiler(symbols.types, unsupportedState);
+            Map<String, ValueType> healthTypes = new LinkedHashMap<String, ValueType>(symbols.types);
+            healthTypes.put("event.old", ValueType.NUMBER);
+            healthTypes.put("event.new", ValueType.NUMBER);
+            healthTypes.put("event.delta", ValueType.NUMBER);
+            Set<String> unsupportedHealth = new HashSet<String>(unsupportedState);
+            if (!capabilities.contains(Capability.EVENT_HEALTH)) {
+                unsupportedHealth.add("event.old");
+                unsupportedHealth.add("event.new");
+                unsupportedHealth.add("event.delta");
+            }
+            ExpressionCompiler healthCompiler = new ExpressionCompiler(healthTypes, unsupportedHealth);
+
+            List<Binding> bindings = parseBindings(json, scene.ids, definitionLabel, bindingCompiler,
+                    scene.parents);
+            Map<String, PropertyAnimation> animations = parseAnimations(json, definitionLabel, true);
+            List<BehaviorRule> behaviors = parseBehaviors(json, scene.ids, animations, definitionLabel,
+                    healthCompiler, stateCompiler);
+            ReactiveDefinition reactive = new ReactiveDefinition(bindings, animations, behaviors,
+                    symbols.constants, symbols.values);
+            GuiDefinition original = base.definition();
+            GuiDefinition definition = new GuiDefinition(original.geometry(), original.slotRules(),
+                    scene.sprites, original.texts(), original.textRules(), reactive, scene.groups);
+            result.add(new SchemaV2Parser.ParsedDefinition(base.id(), base.operation(), base.priority(),
+                    base.matcher(), definition));
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    private ParsedScene parseScene(JsonObject definition, List<GuiDefinition.Sprite> parsedSprites,
+                                   String label) {
+        JsonArray elements = optionalArray(definition, "elements", label);
+        Map<String, JsonObject> byId = new LinkedHashMap<String, JsonObject>();
+        Map<String, String> types = new LinkedHashMap<String, String>();
+        Map<String, Integer> declarationOrder = new LinkedHashMap<String, Integer>();
+        int groupCount = 0;
+        for (int index = 0; index < elements.size(); index++) {
+            String itemLabel = label + ".elements[" + index + "]";
+            JsonObject element = object(elements.get(index), itemLabel);
+            String id = stableId(requiredString(element, "id", itemLabel), itemLabel + ".id");
+            if (byId.put(id, element) != null) throw failure(itemLabel, "duplicate element id: " + id);
+            String type = requiredString(element, "type", itemLabel);
+            types.put(id, type);
+            declarationOrder.put(id, Integer.valueOf(index));
+            if ("group".equals(type)) groupCount++;
+        }
+        if (groupCount > ResourceLimits.MAX_GROUPS_PER_DEFINITION) {
+            throw failure(label, "groups exceeds " + ResourceLimits.MAX_GROUPS_PER_DEFINITION);
+        }
+
+        Map<String, String> parents = new LinkedHashMap<String, String>();
+        Map<String, List<String>> children = new LinkedHashMap<String, List<String>>();
+        for (Map.Entry<String, JsonObject> entry : byId.entrySet()) {
+            if (!"group".equals(types.get(entry.getKey()))) continue;
+            JsonArray configured = optionalArray(entry.getValue(), "children", label + ".elements["
+                    + declarationOrder.get(entry.getKey()) + "]");
+            if (configured.size() > ResourceLimits.MAX_CHILDREN_PER_GROUP) {
+                throw failure(label, "group " + entry.getKey() + " children exceeds "
+                        + ResourceLimits.MAX_CHILDREN_PER_GROUP);
+            }
+            List<String> list = new ArrayList<String>();
+            Set<String> unique = new LinkedHashSet<String>();
+            for (int childIndex = 0; childIndex < configured.size(); childIndex++) {
+                JsonElement childValue = configured.get(childIndex);
+                if (!childValue.isJsonPrimitive() || !childValue.getAsJsonPrimitive().isString()) {
+                    throw failure(label, "group " + entry.getKey() + " child must be an element ID");
+                }
+                String child = stableId(childValue.getAsString(), label + ".group " + entry.getKey());
+                if (!byId.containsKey(child)) {
+                    throw failure(label, "group " + entry.getKey() + " target does not exist: " + child);
+                }
+                if (!unique.add(child)) throw failure(label, "group " + entry.getKey()
+                        + " repeats child: " + child);
+                String previous = parents.put(child, entry.getKey());
+                if (previous != null) throw failure(label, "element " + child
+                        + " has multiple parents: " + previous + " and " + entry.getKey());
+                list.add(child);
+            }
+            children.put(entry.getKey(), Collections.unmodifiableList(list));
+        }
+
+        Map<String, Integer> sceneOrder = new LinkedHashMap<String, Integer>();
+        Set<String> visiting = new LinkedHashSet<String>();
+        Set<String> visited = new LinkedHashSet<String>();
+        int[] nextOrder = {0};
+        for (String id : byId.keySet()) {
+            if (!parents.containsKey(id)) visitScene(id, children, visiting, visited,
+                    sceneOrder, nextOrder, 1, label);
+        }
+        if (visited.size() != byId.size()) {
+            for (String id : byId.keySet()) {
+                if (!visited.contains(id)) visitScene(id, children, visiting, visited,
+                        sceneOrder, nextOrder, 1, label);
+            }
+        }
+
+        List<GuiDefinition.Sprite> sprites = new ArrayList<GuiDefinition.Sprite>();
+        List<GuiDefinition.Group> groups = new ArrayList<GuiDefinition.Group>();
+        int parsedIndex = 0;
+        for (Map.Entry<String, JsonObject> entry : byId.entrySet()) {
+            String id = entry.getKey();
+            JsonObject element = entry.getValue();
+            String itemLabel = label + ".elements[" + declarationOrder.get(id) + "]";
+            String parent = parents.get(id);
+            GuiDefinition.Anchor anchor = sceneAnchor(element, parent, itemLabel);
+            int order = sceneOrder.get(id).intValue();
+            if ("sprite".equals(types.get(id))) {
+                GuiDefinition.Sprite parsed = parsedSprites.get(parsedIndex++);
+                GuiDefinition.Pivot pivot = parsePivot(element, parsed.width(), parsed.height(), itemLabel);
+                sprites.add(new GuiDefinition.Sprite(parsed.texture(), parsed.animation(), parsed.x(), parsed.y(),
+                        parsed.z(), parsed.u(), parsed.v(), parsed.width(), parsed.height(), parsed.sourceWidth(),
+                        parsed.sourceHeight(), parsed.textureWidth(), parsed.textureHeight(), parsed.fullTexture(),
+                        parsed.color(), parsed.layer(), anchor, id, parent, pivot, order, true));
+            } else {
+                double width = optionalFiniteNumber(element, "width", 0.0D, itemLabel);
+                double height = optionalFiniteNumber(element, "height", 0.0D, itemLabel);
+                if (width < 0.0D || height < 0.0D) {
+                    throw failure(itemLabel, "group width/height must be non-negative");
+                }
+                groups.add(new GuiDefinition.Group(id, parent,
+                        children.containsKey(id) ? children.get(id) : Collections.<String>emptyList(),
+                        optionalFiniteNumber(element, "x", 0.0D, itemLabel),
+                        optionalFiniteNumber(element, "y", 0.0D, itemLabel), width, height, anchor,
+                        parsePivot(element, width, height, itemLabel), order));
+            }
+        }
+        return new ParsedScene(sprites, groups, new LinkedHashSet<String>(byId.keySet()), parents);
+    }
+
+    private static void visitScene(String id, Map<String, List<String>> children,
+                                   Set<String> visiting, Set<String> visited,
+                                   Map<String, Integer> order, int[] nextOrder,
+                                   int depth, String label) {
+        if (depth > ResourceLimits.MAX_SCENE_DEPTH) {
+            throw failure(label, "scene depth exceeds " + ResourceLimits.MAX_SCENE_DEPTH + " at " + id);
+        }
+        if (visited.contains(id)) return;
+        if (!visiting.add(id)) {
+            StringBuilder cycle = new StringBuilder();
+            for (String item : visiting) {
+                if (cycle.length() > 0) cycle.append(" -> ");
+                cycle.append(item);
+            }
+            cycle.append(" -> ").append(id);
+            throw failure(label, "scene graph cycle detected: " + cycle);
+        }
+        order.put(id, Integer.valueOf(nextOrder[0]++));
+        List<String> nested = children.get(id);
+        if (nested != null) {
+            for (String child : nested) visitScene(child, children, visiting, visited,
+                    order, nextOrder, depth + 1, label);
+        }
+        visiting.remove(id);
+        visited.add(id);
+    }
+
+    private Symbols parseSymbols(JsonObject definition, String label) {
+        JsonObject configuredConstants = optionalObject(definition, "constants", label);
+        if (configuredConstants.size() > ReactiveLimits.MAX_CONSTANTS_PER_DEFINITION) {
+            throw failure(label, "constants exceeds " + ReactiveLimits.MAX_CONSTANTS_PER_DEFINITION);
+        }
+        Map<String, RuntimeValue> constants = new LinkedHashMap<String, RuntimeValue>();
+        Map<String, ValueType> types = new LinkedHashMap<String, ValueType>(RuntimeVariables.stateTypes());
+        for (Map.Entry<String, JsonElement> entry : configuredConstants.entrySet()) {
+            String name = symbolName(entry.getKey(), label + ".constants");
+            if (types.containsKey(name) || elementVariableTypes().containsKey(name)) {
+                throw failure(label, "constant conflicts with reserved variable: " + name);
+            }
+            RuntimeValue value = primitiveValue(entry.getValue(), label + ".constants." + name);
+            constants.put(name, value);
+            types.put(name, value.getType());
+        }
+
+        JsonObject configuredValues = optionalObject(definition, "values", label);
+        if (configuredValues.size() > ReactiveLimits.MAX_DERIVED_VALUES_PER_DEFINITION) {
+            throw failure(label, "values exceeds " + ReactiveLimits.MAX_DERIVED_VALUES_PER_DEFINITION);
+        }
+        List<DerivedValue> values = new ArrayList<DerivedValue>();
+        Set<String> unsupported = unsupportedVariables(RuntimeVariables.stateTypes().keySet());
+        for (Map.Entry<String, JsonElement> entry : configuredValues.entrySet()) {
+            String name = symbolName(entry.getKey(), label + ".values");
+            if (types.containsKey(name) || elementVariableTypes().containsKey(name)) {
+                throw failure(label, "derived value conflicts with existing variable: " + name);
+            }
+            if (!entry.getValue().isJsonPrimitive()
+                    || !entry.getValue().getAsJsonPrimitive().isString()) {
+                throw failure(label, "derived value " + name + " must be an expression string");
+            }
+            ExpressionCompiler compiler = new ExpressionCompiler(types, unsupported);
+            CompiledExpression expression = compile(compiler, entry.getValue().getAsString(),
+                    label + ".values." + name);
+            values.add(new DerivedValue(name, expression));
+            types.put(name, expression.getType());
+        }
+        return new Symbols(constants, values, types);
+    }
+
+    private static RuntimeValue primitiveValue(JsonElement value, String label) {
+        if (!value.isJsonPrimitive()) throw failure(label, "constant must be number, boolean, or string");
+        if (value.getAsJsonPrimitive().isBoolean()) return RuntimeValue.bool(value.getAsBoolean());
+        if (value.getAsJsonPrimitive().isString()) return RuntimeValue.string(value.getAsString());
+        if (value.getAsJsonPrimitive().isNumber()) {
+            double number = value.getAsDouble();
+            if (!Double.isFinite(number)) throw failure(label, "constant number must be finite");
+            return RuntimeValue.number(number);
+        }
+        throw failure(label, "constant must be number, boolean, or string");
+    }
+
+    private static Map<String, ValueType> elementVariableTypes() {
+        Map<String, ValueType> result = new LinkedHashMap<String, ValueType>();
+        for (String prefix : Arrays.asList("self", "parent")) {
+            result.put(prefix + ".local_x", ValueType.NUMBER);
+            result.put(prefix + ".local_y", ValueType.NUMBER);
+            result.put(prefix + ".world_x", ValueType.NUMBER);
+            result.put(prefix + ".world_y", ValueType.NUMBER);
+            result.put(prefix + ".world_center_x", ValueType.NUMBER);
+            result.put(prefix + ".world_center_y", ValueType.NUMBER);
+            result.put(prefix + ".width", ValueType.NUMBER);
+            result.put(prefix + ".height", ValueType.NUMBER);
+        }
+        return result;
+    }
+
+    private static GuiDefinition.Anchor sceneAnchor(JsonObject element, String parent, String label) {
+        String configured = string(element, "anchor", parent == null ? "gui" : "parent", label);
+        GuiDefinition.Anchor anchor = parseSceneAnchor(configured, label);
+        if (parent == null && anchor == GuiDefinition.Anchor.PARENT) {
+            throw failure(label, "root element cannot use parent anchor");
+        }
+        if (parent != null && anchor != GuiDefinition.Anchor.PARENT) {
+            throw failure(label, "child element anchor must be parent");
+        }
+        return anchor;
+    }
+
+    private static GuiDefinition.Anchor parseSceneAnchor(String value, String label) {
+        try {
+            return GuiDefinition.Anchor.valueOf(value.toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException error) {
+            throw failure(label, "unknown scene anchor: " + value);
+        }
+    }
+
+    private static String compatibleBaseAnchor(String value, String label) {
+        GuiDefinition.Anchor anchor = parseSceneAnchor(value, label);
+        if (anchor == GuiDefinition.Anchor.GUI || anchor.name().startsWith("GUI_")) return "gui";
+        if (anchor == GuiDefinition.Anchor.SCREEN_CENTER) return "screen_center";
+        return "screen";
+    }
+
+    private static GuiDefinition.Pivot parsePivot(JsonObject element, double width, double height,
+                                                  String label) {
+        if (!element.has("pivot")) return new GuiDefinition.Pivot(width * 0.5D, height * 0.5D);
+        JsonElement configured = element.get("pivot");
+        if (configured.isJsonObject()) {
+            JsonObject pivot = configured.getAsJsonObject();
+            rejectUnknown(pivot, fields("x", "y"), label + ".pivot");
+            return new GuiDefinition.Pivot(requiredFiniteNumber(pivot, "x", label + ".pivot"),
+                    requiredFiniteNumber(pivot, "y", label + ".pivot"));
+        }
+        if (!configured.isJsonPrimitive() || !configured.getAsJsonPrimitive().isString()) {
+            throw failure(label, "pivot must be a named origin or {x,y}");
+        }
+        String value = configured.getAsString();
+        if ("parent".equals(value) || "top_left".equals(value)) return new GuiDefinition.Pivot(0, 0);
+        double x;
+        if (value.endsWith("_left")) x = 0.0D;
+        else if (value.endsWith("_right")) x = width;
+        else x = width * 0.5D;
+        double y;
+        if (value.startsWith("top_")) y = 0.0D;
+        else if (value.startsWith("bottom_")) y = height;
+        else if (value.startsWith("center_") || "center".equals(value)) y = height * 0.5D;
+        else throw failure(label, "unknown pivot: " + value);
+        return new GuiDefinition.Pivot(x, y);
+    }
+
+    private static double optionalFiniteNumber(JsonObject json, String field, double fallback, String label) {
+        if (!json.has(field)) return fallback;
+        double value = requiredFiniteNumber(json, field, label);
+        return ResourceLimits.finiteGui(value, label + "." + field);
+    }
+
+    private static JsonObject optionalObject(JsonObject json, String field, String label) {
+        if (!json.has(field)) return new JsonObject();
+        return object(json.get(field), label + "." + field);
+    }
+
+    private static String symbolName(String value, String label) {
+        if (value == null || !value.matches("[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*")
+                || value.length() > ResourceLimits.MAX_PATH_LENGTH) {
+            throw failure(label, "invalid symbol name: " + value);
+        }
+        for (String reserved : Arrays.asList("player.", "screen.", "gui.", "mouse.",
+                "event.", "self.", "parent.")) {
+            if (value.startsWith(reserved)) {
+                throw failure(label, "symbol uses reserved namespace: " + value);
+            }
+        }
+        return value;
+    }
+
     private ParsedElements attachElementIds(JsonObject definition, List<GuiDefinition.Sprite> parsed,
                                              String label) {
         JsonArray sprites = optionalArray(definition, "sprites", label);
@@ -143,13 +525,21 @@ public final class SchemaV3Parser {
     }
 
     private ReactiveDefinition parseReactive(JsonObject definition, Set<String> elementIds, String label) {
-        List<Binding> bindings = parseBindings(definition, elementIds, label);
-        Map<String, PropertyAnimation> animations = parseAnimations(definition, label);
-        List<BehaviorRule> behaviors = parseBehaviors(definition, elementIds, animations, label);
+        List<Binding> bindings = parseBindings(definition, elementIds, label, stateExpressions);
+        Map<String, PropertyAnimation> animations = parseAnimations(definition, label, false);
+        List<BehaviorRule> behaviors = parseBehaviors(definition, elementIds, animations, label,
+                healthEventExpressions, stateEventExpressions);
         return new ReactiveDefinition(bindings, animations, behaviors);
     }
 
-    private List<Binding> parseBindings(JsonObject definition, Set<String> elementIds, String label) {
+    private List<Binding> parseBindings(JsonObject definition, Set<String> elementIds, String label,
+                                        ExpressionCompiler bindingCompiler) {
+        return parseBindings(definition, elementIds, label, bindingCompiler, null);
+    }
+
+    private List<Binding> parseBindings(JsonObject definition, Set<String> elementIds, String label,
+                                        ExpressionCompiler bindingCompiler,
+                                        Map<String, String> parents) {
         JsonArray values = optionalArray(definition, "bindings", label);
         checkCount(values, ReactiveLimits.MAX_BINDINGS_PER_DEFINITION, label + ".bindings");
         List<Binding> result = new ArrayList<Binding>();
@@ -163,7 +553,12 @@ public final class SchemaV3Parser {
             requirePropertyCapability(property, itemLabel);
             String key = target + "\u0000" + property.getSchemaName();
             if (!unique.add(key)) throw failure(itemLabel, "duplicate binding for " + target + "." + property.getSchemaName());
-            CompiledExpression expression = compile(stateExpressions, requiredString(value, "value", itemLabel), itemLabel);
+            String expressionSource = requiredString(value, "value", itemLabel);
+            if (parents != null && !parents.containsKey(target)
+                    && referencesNamespace(expressionSource, "parent.")) {
+                throw failure(itemLabel, "root target cannot reference parent.*");
+            }
+            CompiledExpression expression = compile(bindingCompiler, expressionSource, itemLabel);
             if (expression.getType() != property.getValueType()) {
                 throw failure(itemLabel, "binding expression type must be " + property.getValueType());
             }
@@ -180,7 +575,8 @@ public final class SchemaV3Parser {
         return result;
     }
 
-    private Map<String, PropertyAnimation> parseAnimations(JsonObject definition, String label) {
+    private Map<String, PropertyAnimation> parseAnimations(JsonObject definition, String label,
+                                                            boolean allowComposition) {
         JsonArray values = optionalArray(definition, "animations", label);
         checkCount(values, ReactiveLimits.MAX_ANIMATIONS_PER_DEFINITION, label + ".animations");
         Map<String, PropertyAnimation> result = new LinkedHashMap<String, PropertyAnimation>();
@@ -200,7 +596,9 @@ public final class SchemaV3Parser {
             for (int trackIndex = 0; trackIndex < tracks.size(); trackIndex++) {
                 String trackLabel = itemLabel + ".tracks[" + trackIndex + "]";
                 JsonObject track = object(tracks.get(trackIndex), trackLabel);
-                rejectUnknown(track, fields("property", "interpolation", "keyframes"), trackLabel);
+                rejectUnknown(track, allowComposition
+                        ? fields("property", "interpolation", "compose", "keyframes")
+                        : fields("property", "interpolation", "keyframes"), trackLabel);
                 ReactiveProperty property = property(requiredString(track, "property", trackLabel), trackLabel);
                 if (property == ReactiveProperty.VISIBLE) {
                     throw failure(trackLabel, "visible is not an animation track property");
@@ -212,7 +610,15 @@ public final class SchemaV3Parser {
                 if ("linear".equals(interpolationName)) interpolation = Interpolation.LINEAR;
                 else if ("smoothstep".equals(interpolationName)) interpolation = Interpolation.SMOOTHSTEP;
                 else throw failure(trackLabel, "unknown interpolation: " + interpolationName);
-                parsedTracks.add(new PropertyTrack(property, interpolation,
+                CompositionMode composition = CompositionMode.defaultFor(property);
+                if (allowComposition && track.has("compose")) {
+                    try {
+                        composition = CompositionMode.parse(requiredString(track, "compose", trackLabel));
+                    } catch (IllegalArgumentException error) {
+                        throw failure(trackLabel, error.getMessage());
+                    }
+                }
+                parsedTracks.add(new PropertyTrack(property, interpolation, composition,
                         parseKeyframes(requiredArray(track, "keyframes", trackLabel), duration, property, trackLabel)));
             }
             result.put(id, new PropertyAnimation(id, duration, bool(value, "loop", false, itemLabel), parsedTracks));
@@ -250,7 +656,9 @@ public final class SchemaV3Parser {
     }
 
     private List<BehaviorRule> parseBehaviors(JsonObject definition, Set<String> elementIds,
-                                              Map<String, PropertyAnimation> animations, String label) {
+                                              Map<String, PropertyAnimation> animations, String label,
+                                              ExpressionCompiler healthCompiler,
+                                              ExpressionCompiler stateCompiler) {
         JsonArray values = optionalArray(definition, "behaviors", label);
         checkCount(values, ReactiveLimits.MAX_BEHAVIORS_PER_DEFINITION, label + ".behaviors");
         List<BehaviorRule> result = new ArrayList<BehaviorRule>();
@@ -270,7 +678,7 @@ public final class SchemaV3Parser {
             String mode = string(on, "mode", "coalesce", itemLabel + ".on");
             if (!"coalesce".equals(mode)) throw failure(itemLabel, "unknown event mode: " + mode);
             EventTrigger trigger = new EventTrigger(event, every, EventTrigger.Mode.COALESCE);
-            ExpressionCompiler compiler = isHealthEvent(event) ? healthEventExpressions : stateEventExpressions;
+            ExpressionCompiler compiler = isHealthEvent(event) ? healthCompiler : stateCompiler;
             CompiledExpression condition = compile(compiler, string(value, "if", "true", itemLabel), itemLabel + ".if");
             if (condition.getType() != ValueType.BOOLEAN) throw failure(itemLabel, "behavior if must be boolean");
             JsonArray actions = requiredArray(value, "actions", itemLabel);
@@ -401,6 +809,40 @@ public final class SchemaV3Parser {
         }
     }
 
+    /** Token-level namespace check used before the expression AST is internalized; string literals are ignored. */
+    private static boolean referencesNamespace(String source, String namespace) {
+        boolean quoted = false;
+        boolean escaped = false;
+        for (int index = 0; index < source.length();) {
+            char current = source.charAt(index);
+            if (quoted) {
+                index++;
+                if (escaped) escaped = false;
+                else if (current == '\\') escaped = true;
+                else if (current == '"') quoted = false;
+                continue;
+            }
+            if (current == '"') {
+                quoted = true;
+                index++;
+                continue;
+            }
+            if (Character.isLetter(current) || current == '_') {
+                int end = index + 1;
+                while (end < source.length()) {
+                    char next = source.charAt(end);
+                    if (!Character.isLetterOrDigit(next) && next != '_' && next != '.') break;
+                    end++;
+                }
+                if (source.substring(index, end).startsWith(namespace)) return true;
+                index = end;
+                continue;
+            }
+            index++;
+        }
+        return false;
+    }
+
     private static String stableId(String value, String label) {
         if (value.length() > ResourceLimits.MAX_PATH_LENGTH || !value.matches("[a-z0-9_.-]+")) {
             throw failure(label, "must be a lowercase stable element/animation id");
@@ -476,6 +918,23 @@ public final class SchemaV3Parser {
         return (int) value;
     }
 
+    /** Internal code 31 represents the external exact JSON number 3.1. */
+    private static int requiredApiVersion(JsonObject json, String label) {
+        JsonElement value = json.get("api_version");
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw failure(label, "api_version must be numeric 3 or 3.1");
+        }
+        BigDecimal version;
+        try {
+            version = value.getAsBigDecimal().stripTrailingZeros();
+        } catch (RuntimeException error) {
+            throw failure(label, "api_version must be numeric 3 or 3.1");
+        }
+        if (version.compareTo(new BigDecimal("3")) == 0) return 3;
+        if (version.compareTo(new BigDecimal("3.1")) == 0) return 31;
+        throw failure(label, "api_version must be 3 or 3.1");
+    }
+
     private static int requiredNonNegativeInteger(JsonObject json, String field, String label) {
         int value = requiredInteger(json, field, label);
         if (value < 0) throw failure(label, field + " must be non-negative");
@@ -530,6 +989,34 @@ public final class SchemaV3Parser {
         ParsedElements(List<GuiDefinition.Sprite> sprites, Set<String> ids) {
             this.sprites = Collections.unmodifiableList(new ArrayList<GuiDefinition.Sprite>(sprites));
             this.ids = Collections.unmodifiableSet(new LinkedHashSet<String>(ids));
+        }
+    }
+
+    private static final class ParsedScene {
+        final List<GuiDefinition.Sprite> sprites;
+        final List<GuiDefinition.Group> groups;
+        final Set<String> ids;
+        final Map<String, String> parents;
+
+        ParsedScene(List<GuiDefinition.Sprite> sprites, List<GuiDefinition.Group> groups,
+                    Set<String> ids, Map<String, String> parents) {
+            this.sprites = Collections.unmodifiableList(new ArrayList<GuiDefinition.Sprite>(sprites));
+            this.groups = Collections.unmodifiableList(new ArrayList<GuiDefinition.Group>(groups));
+            this.ids = Collections.unmodifiableSet(new LinkedHashSet<String>(ids));
+            this.parents = Collections.unmodifiableMap(new LinkedHashMap<String, String>(parents));
+        }
+    }
+
+    private static final class Symbols {
+        final Map<String, RuntimeValue> constants;
+        final List<DerivedValue> values;
+        final Map<String, ValueType> types;
+
+        Symbols(Map<String, RuntimeValue> constants, List<DerivedValue> values,
+                Map<String, ValueType> types) {
+            this.constants = Collections.unmodifiableMap(new LinkedHashMap<String, RuntimeValue>(constants));
+            this.values = Collections.unmodifiableList(new ArrayList<DerivedValue>(values));
+            this.types = Collections.unmodifiableMap(new LinkedHashMap<String, ValueType>(types));
         }
     }
 }

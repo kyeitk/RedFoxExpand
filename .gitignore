@@ -20,16 +20,17 @@ hs_err_pid*
 *.iws
 *.launch
 
-# Local-only test/resource-pack material. Some fixtures contain third-party
-# assets whose licences forbid redistribution.
+# Local-only resources and development material.
 src/test/
 examples/
+docs/DEVELOPMENT.md
 docs/TESTING.md
 docs/MIGRATION_AUDIT.md
 docs/ARCHITECTURE.md
 docs/SCHEMA_V3_IMPLEMENTATION_REPORT.md
 docs/SCHEMA_V3_IMPLEMENTATION_AUDIT.md
 docs/SCHEMA_V3_BACKPORT_PLAN.md
+Codex 任务：建立 DEVELOPMENT 开发者维护性与易用性计划.md
 test/
 tests/
 example-resourcepack/

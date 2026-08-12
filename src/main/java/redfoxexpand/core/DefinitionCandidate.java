@@ -15,3 +15,4 @@ public record DefinitionCandidate(
 ) {
     public enum Operation { APPEND, REPLACE, DISABLE }
 }
+

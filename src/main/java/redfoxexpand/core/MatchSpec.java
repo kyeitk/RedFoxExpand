@@ -109,3 +109,4 @@ public sealed interface MatchSpec permits MatchSpec.All, MatchSpec.Any, MatchSpe
         return split < 0 ? value : value.substring(split + 1);
     }
 }
+
