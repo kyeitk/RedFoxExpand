@@ -8,45 +8,51 @@
 [![Status](https://img.shields.io/badge/Status-Development-yellow.svg)](#)
 
 RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **1.7.10 Forge** 客户端 Mod。它允许材质包作者通过
-兼容的 v1 目录或严格的 Schema v2/v3 JSON 配置修改容器 GUI，而不必修改或重新编译 Mod。
+JSON 修改容器 GUI 的尺寸、位置、Slot、贴图和文字，并使用响应式状态、动画与场景图构建动态界面。
 
-- 当前版本：`0.2.0`（Git Tag：`v0.2.0-mc1.7.10`）
+- 当前版本：`0.2.1`（Git Tag：`v0.2.1-mc1.7.10`）
 - Minecraft：`1.7.10`
 - Forge：`10.13.4.1614`
+- Java：`8`
 - 运行端：仅客户端
-- Java：8
+
+## 项目实例演示
+
+![RedFoxExpand 响应式角色界面演示](docs/assets/redfoxexpand-demo.gif)
 
 ## 功能状态
 
 ### 已实现
 
-- 扫描文件夹、ZIP/JAR、Mod 来源和服务器资源包中的 `assets/Kyeitk/` v1 内容；
-- 支持原生小写域 `assets/kyeitk/redfoxexpand/index.json` strict v2/v3 manifest；
-- 同时生成 legacy、Kyeitk v1 和 native v2/v3 候选，单个坏配置不会关闭其他格式；
-- 通过界面类、容器类或标题匹配原版及第三方 Mod 容器 GUI，类目标支持精确或继承匹配；
-- 支持常见现代 `*Menu` 名称到 Minecraft 1.7.10 Container 类的版本映射；
-- 修改 GUI 位置/尺寸、槽位位置/高亮、标题/标签颜色，并绘制三层贴图和前景文字；
-- 支持整图、局部 UV、三种锚点、浮点坐标、缩放、RGBA Alpha 和时间动画；
-- 支持显式 `font_rules`、独立 `texts` 以及 `id`、`priority`、`append/replace/disable` 合并；
-- 玩家背包在有/无药水效果时保持相同居中布局，药水效果列表显示在 GUI 右侧；
-- F3+T 时重建不可变配置快照，并按代释放动态纹理；
-- 配置、路径、列表、PNG 和动态纹理均有资源预算与安全回退；
-- 在没有 Kyeitk 配置时兼容旧 `assets/<namespace>/polytone/gui_modifiers/` 配置；
-- Schema v3 在 v2 上加入稳定 Sprite ID、Java 8 Expression Engine 和每 tick Runtime Context；
-- 支持玩家、屏幕、GUI、鼠标坐标及左右键状态，以及 health、burning、`screen.opened` 事件；
-- 支持 `visible`、`alpha`、平移、缩放、旋转 Binding 和数值平滑；
-- 支持 Property Animation、`linear` / `smoothstep`、Behavior 与安全 Action；
-- 每个 `GuiContainer` 独占响应式运行时，关闭、玩家变化、resize/init 与 F3+T 会清理旧状态；
-- native v2/v3 切换材质包时会清理由本 Mod 创建的旧纹理缓存，不影响原版或其他 Mod 共享纹理。
+- 兼容旧 `assets/Kyeitk/` v1 配置及旧 Polytone GUI modifier 回退路径；
+- 支持小写原生 manifest，以及严格的 Schema v2、v3 和 v3.1 配置；
+- 支持 `append`、`replace`、`disable`、Definition priority 与稳定资源包优先级；
+- 支持屏幕类、容器类、标题及 `all/any/not` 组合匹配；
+- 支持 GUI 位置/尺寸、Slot 位移与渐变高亮、静态文字和文字规则；
+- 支持整图、区域 UV、资源定位、材质包纹理、三种渲染层和帧动画；
+- 支持 PNG Alpha；1.7.10 `GL11/GL14 + Tessellator` 渲染桥会在绘制结束后恢复颜色、混合、Alpha、
+  深度、纹理、裁剪和矩阵状态；
+- Schema v3 提供稳定 Sprite ID、Expression Engine、Runtime Context、Binding、Event、Behavior、Action
+  与 Property Animation；
+- Runtime Context 提供玩家血量、燃烧、潜行、疾跑、护甲、饥饿、空气、经验、屏幕、GUI、鼠标及按键状态；
+- 支持 `visible`、`alpha`、平移、缩放和旋转属性，以及平滑、`linear` / `smoothstep` 插值；
+- Schema v3.1 新增统一 `elements`、Sprite/Group、Parent/Child 场景树、局部坐标和父级变换、显隐、透明度继承；
+- 支持 GUI/Screen 九点 Anchor、Element Pivot，以及稳定的 `layer → z → scene order`；
+- 支持 Definition-local `constants`、按声明顺序求值的 `values`，以及 Binding 中的
+  `self.*` / `parent.*` 基础布局几何；
+- 属性动画支持显式 `replace` / `add` / `multiply` 合成，Group 可作为 Binding、Animation 和 Action target；
+- 每个 `GuiContainer` 使用独立响应式运行时，关闭界面、玩家变化、重新布局或 F3+T 后释放旧瞬时状态；
+- 材质包切换时只清理由 RedFoxExpand 创建的原生纹理缓存，不影响原版或其他 Mod 的共享纹理。
 
 ### 下一步
 
-- HUD API 与 Widget/Component；
-- Semantic Slot，以及 text/Slot 的响应式 target；
-- width、height、color、Texture State 和自定义旋转枢轴；
-- 自定义变量/事件、Timer、User Function 与 `every.mode=repeat`；
-- 面向材质包作者的 Inspector；
-- 更广泛的第三方 Mod 游戏内兼容验证。
+- 更清晰的结构化诊断与离线 Validator；
+- 面向材质包作者的 Inspector 与属性管线视图；
+- Layout Container、Clip/Scroll 与 Component 复用；
+- Semantic Slot，以及 Text/Slot 的响应式 target；
+- HUD API 与 Widget；
+- Texture State、width/height/color Binding 与更多安全事件和动作；
+- 可读取并导出正式 Schema JSON 的可视化编辑器。
 
 完整状态和边界见 [`docs/FEATURES.md`](docs/FEATURES.md)。
 
@@ -70,113 +76,62 @@ Runtime Context  ──┘                                      -> Layout Engine
 ```
 
 项目将从“材质包辅助 Mod”继续发展为 **Minecraft Resource Pack UI Framework**，并最终形成可复用的
-**Minecraft Resource Pack UI Runtime**。当前优先级依次为完善 Expression Engine、建设 HUD API、实现
-Semantic Slot，以及为材质包作者提供 Inspector；已完成和未实现边界以本文及功能文档为准。
+**Minecraft Resource Pack UI Runtime**。Schema v3.1 已让复杂界面从平铺 Sprite 进入 Scene Graph；下一阶段
+优先改善诊断、Inspector、布局与复用能力，再在同一核心上扩展 Semantic Slot、HUD 和 Widget。
 
 ## 安装
 
-1. 安装 Minecraft 1.7.10 和 Forge `10.13.4.1614`；
+1. 安装 Minecraft 1.7.10、Forge `10.13.4.1614` 与 Java 8；
 2. 从 [GitHub Releases](https://github.com/kyeitk/RedFoxExpand/releases) 下载
-   `RedFoxExpand-1.7.10-0.2.0.jar`；
+   `RedFoxExpand-1.7.10-0.2.1.jar`；
 3. 将 JAR 放入 Minecraft 实例的 `mods/` 目录；
-4. 启动游戏，在“选项 → 资源包”中启用包含 Kyeitk 配置的材质包。
+4. 启动游戏并启用符合 v1、Schema v2、v3 或 v3.1 的 RedFoxExpand 材质包。
 
-Mod 不要求服务端安装。建议在新增或修改配置后执行 F3+T。
+Mod 不要求服务端安装。新增或修改资源包配置后可按 F3+T 重新加载。
 
-## 制作第一个 Kyeitk 材质包
-
-### 1. 建立目录
-
-与 1.8.9 分支共用的 v1 结构：
+## Schema v2/v3/v3.1 目录
 
 ```text
-MyKyeitkPack/
+MyPack/
 ├─ pack.mcmeta
 └─ assets/
-   └─ Kyeitk/
-      ├─ config/
-      │  └─ inventory.json
-      └─ textures/
-         └─ gui/
-            └─ inventory.png
+   └─ kyeitk/
+      └─ redfoxexpand/
+         ├─ index.json
+         ├─ config/
+         │  └─ inventory.json
+         └─ textures/
+            └─ gui/
+               └─ character.png
 ```
 
-`Kyeitk` 是 v1 规范物理目录名，请保持此大小写；文件和子目录建议使用小写 ASCII。
-
-Minecraft 1.7.10 的最小 `pack.mcmeta`：
+Minecraft 1.7.10 的 `pack.mcmeta` 使用 `pack_format: 1`：
 
 ```json
 {
   "pack": {
     "pack_format": 1,
-    "description": "My first RedFoxExpand GUI pack"
+    "description": "My RedFoxExpand pack"
   }
 }
-```
-
-1.7.10 分支还支持原生小写域 v2/v3：
-
-```text
-assets/kyeitk/
-└─ redfoxexpand/
-   ├─ index.json
-   ├─ config/inventory.json
-   └─ textures/gui/inventory.png
 ```
 
 `assets/kyeitk/redfoxexpand/index.json`：
 
 ```json
 {
-  "api_version": 3,
+  "api_version": 3.1,
   "configs": ["redfoxexpand/config/inventory.json"]
 }
 ```
 
-### 2. 放置 GUI 图片
+manifest 的 `api_version` 可为严格数值 `2`、`3` 或 `3.1`，并决定其全部 config 版本。版本必须完全一致，
+字符串 `"3.1"` 无效。manifest 中的 config 必须来自同一个资源包。
 
-v1 材质包将带 Alpha 通道的 PNG 放到：
+## Schema v3 响应式界面
 
-```text
-assets/Kyeitk/textures/gui/inventory.png
-```
-
-图片可以大于原版玩家背包的 `176×166`，显示尺寸由 JSON 的 `width` / `height` 决定。透明、半透明和
-不透明像素均受支持；建议导出 8 位 RGBA PNG。
-
-### 3. 写入配置
-
-`assets/Kyeitk/config/inventory.json`：
-
-```json
-{
-  "target_type": "container_class",
-  "target": "net.minecraft.inventory.ContainerPlayer",
-  "class_match": "exact",
-  "custom_textures": [
-    {
-      "texture_type": "full",
-      "texture": "textures/gui/inventory.png",
-      "anchor": "screen_center",
-      "x": -88,
-      "y": -83,
-      "width": 176,
-      "height": 166,
-      "layer": "background"
-    }
-  ]
-}
-```
-
-启用材质包并打开玩家背包即可查看。修改 PNG 或 JSON 后按 F3+T，当前 GUI 会从基础尺寸和槽位坐标
-重新应用配置，不会因重复重载累计偏移。
-
-## Schema v2/v3 原生入口
-
-v2 提供严格 Definition 协议，v3 再加入响应式运行时。manifest 与 config 的 `api_version` 必须一致；
-v3 Sprite 必须有 Definition 内唯一 ID，才能被 Binding 或 Action 引用。
-
-最小 Schema v3 config：
+需要根据玩家或界面状态动态改变 Sprite 时，将 manifest 与 config 的 `api_version` 都设为 `3`，并为每个
+Sprite 提供 Definition 内唯一的 `id`：
 
 ```json
 {
@@ -185,146 +140,97 @@ v3 Sprite 必须有 Definition 内唯一 ID，才能被 Binding 或 Action 引�
     "id": "example:reactive_inventory",
     "match": {"exact_menu_class":"net.minecraft.inventory.ContainerPlayer"},
     "sprites": [{
-      "id": "character",
-      "texture": {"type":"pack_resource","location":"textures/gui/character.png"},
-      "anchor": "gui", "x": 180, "y": 0, "width": 120, "height": 120,
-      "layer": "underlay"
+      "id": "fire",
+      "texture": {"type":"pack_resource","location":"textures/gui/fire.png"},
+      "anchor": "gui", "x": 80, "y": 20, "width": 32, "height": 32
     }],
+    "bindings": [
+      {"target":"fire","property":"visible","value":"player.is_burning"},
+      {"target":"fire","property":"translate_x","value":"mouse.gui_x - 80","smoothing_ms":120}
+    ]
+  }]
+}
+```
+
+v3 表达式在资源重载时预编译并严格校验，不支持脚本、反射、文件、网络或任意函数调用。完整 Runtime Context、
+表达式语法、属性、事件、动画、行为和预算见 [`docs/SCHEMA_V3.md`](docs/SCHEMA_V3.md)。
+
+## Schema v3.1 场景图
+
+Schema v3.1 面向由多个图层组成的角色、面板和动态界面。将 manifest 与 config 的 `api_version` 都设为
+数值 `3.1`，使用统一 `elements` 数组，并通过 Group 组织可共同移动、缩放、旋转、显隐或改变透明度的子树：
+
+```json
+{
+  "api_version": 3.1,
+  "definitions": [{
+    "id": "example:character",
+    "match": {"exact_menu_class":"net.minecraft.inventory.ContainerPlayer"},
+    "constants": {"turn_limit": 4},
+    "values": {
+      "head_turn": "clamp((mouse.x - screen.width / 2) * 0.01, -turn_limit, turn_limit)"
+    },
+    "elements": [
+      {
+        "id":"character_root", "type":"group",
+        "anchor":"screen_bottom_center", "x":-80, "y":-160,
+        "width":160, "height":160,
+        "children":["body", "head_group"]
+      },
+      {
+        "id":"body", "type":"sprite",
+        "texture":{"type":"pack_resource","location":"textures/gui/body.png"},
+        "width":160, "height":160, "layer":"foreground"
+      },
+      {
+        "id":"head_group", "type":"group", "width":160, "height":160,
+        "children":["head"]
+      },
+      {
+        "id":"head", "type":"sprite",
+        "texture":{"type":"pack_resource","location":"textures/gui/head.png"},
+        "width":160, "height":160, "layer":"foreground"
+      }
+    ],
     "bindings": [{
-      "target":"character", "property":"alpha",
-      "value":"clamp(player.health / player.max_health, 0, 1)",
-      "smoothing_ms":120
-    }],
-    "animations": [{
-      "id":"damage_shake", "duration_ms":240,
-      "tracks":[{"property":"translate_x","keyframes":[
-        {"time_ms":0,"value":0},{"time_ms":40,"value":-5},
-        {"time_ms":80,"value":5},{"time_ms":240,"value":0}
-      ]}]
-    }],
-    "behaviors": [{
-      "on":{"event":"player.health.decreased","every":2,"mode":"coalesce"},
-      "actions":[{"type":"play_animation","target":"character","animation":"damage_shake"}]
+      "target":"head_group", "property":"rotation_z",
+      "value":"head_turn", "smoothing_ms":180
     }]
   }]
 }
 ```
 
-1.7.10 提供玩家、屏幕、GUI 与鼠标 Runtime Context；支持 `visible`、`alpha`、平移、缩放、旋转、
-数值平滑、health/burning/screen 事件及安全 Action。原版没有 Recipe Book，也没有现代注册表化菜单身份；
-应使用 screen/menu class、simple class 或 title matcher。完整变量、表达式、事件、属性、动画、行为、
-安全预算与迁移说明见 [`docs/SCHEMA_V3.md`](docs/SCHEMA_V3.md)。
+根 Element 可使用 GUI/Screen 九点 Anchor，子 Element 使用父级局部坐标；Pivot 决定旋转和缩放中心。
+Constants 消除重复数字，Derived Values 复用表达式，`self.*` / `parent.*` 为鼠标跟随等效果提供稳定基础
+几何。完整字段、默认值、场景继承、动画合成和 v3.0 迁移步骤见
+[`docs/SCHEMA_V3_1.md`](docs/SCHEMA_V3_1.md)。
 
-## 完整配置示例
+## v1 兼容目录
 
-下面的示例扩大玩家背包逻辑区域、绘制背景、移动部分槽位并添加文字：
-
-```json
-{
-  "id": "mytheme:player_inventory",
-  "operation": "append",
-  "priority": 0,
-  "target_type": "container_class",
-  "target": "net.minecraft.inventory.ContainerPlayer",
-  "class_match": "exact",
-  "x_offset": 14,
-  "y_offset": 12,
-  "width_offset": 28,
-  "height_offset": 24,
-  "slot_modifiers": [
-    {
-      "slots": "0-8",
-      "x_offset": 2,
-      "y_offset": 0,
-      "highlight_color": "#80FFFFFF",
-      "color_2": "#20306080"
-    }
-  ],
-  "custom_textures": [
-    {
-      "texture_type": "full",
-      "texture": "textures/gui/inventory.png",
-      "resource_type": "resource_location",
-      "anchor": "gui",
-      "x": 0,
-      "y": 0,
-      "width": 204,
-      "height": 190,
-      "layer": "background"
-    }
-  ],
-  "texts": [
-    {
-      "text": "My Kyeitk Pack",
-      "x": 92,
-      "y": 6,
-      "color": "#FFFFFFFF",
-      "shadow": true,
-      "translate": false
-    }
-  ]
-}
-```
-
-常用字段：
-
-- `target_type`：`screen_class`、`container_class` / `menu_class` 或 `screen_title`；
-- `class_match`：类目标使用 `exact`（默认）或显式 `assignable`；
-- `anchor`：`gui`、`screen_center` 或 `screen`；
-- `layer`：`underlay`、`background` 或 `foreground`；
-- `texture_type`：`full`、`region` 或 `animation`；
-- `resource_type`：`resource_location`、`gui_sprite` 或 `auto`；
-- `id` / `priority` / `operation`：控制跨格式和跨资源包定义的稳定合并。
-
-字段、默认值、合并顺序及错误回退见 [`docs/resourcepack-api.md`](docs/resourcepack-api.md)。
-
-## 动画 GUI
-
-动画目录示例：
+既有资源包仍可使用：
 
 ```text
-assets/Kyeitk/textures/gui/inventory.png
-assets/Kyeitk/textures/gui/inventory/
-├─ animation.json
-├─ frame_0.png
-└─ frame_1.png
+assets/Kyeitk/config/**/*.json
+assets/Kyeitk/textures/**
 ```
 
-在 GUI 配置中使用 `"texture_type": "animation"`，并让 `texture` 指向
-`textures/gui/inventory`。当前已实现帧顺序、逐帧时长、循环、`always` / `never` 条件、默认图片和
-缺帧策略；需要游戏状态、鼠标或事件驱动效果时应使用 Schema v3 Binding/Behavior。格式见
-[`docs/GUI_RESOURCE_FORMAT.md`](docs/GUI_RESOURCE_FORMAT.md)。
-
-## 第三方 Mod GUI
-
-仅在目标 Mod 已加载时启用的 v1 配置应放在：
-
-```text
-assets/Kyeitk/compatibility/<modid>/config/inventory.json
-assets/Kyeitk/compatibility/<modid>/textures/gui/inventory.png
-```
-
-配置可用 `screen_class` 匹配第三方界面类，或用 `container_class` 匹配容器类。优先使用实际的
-Minecraft 1.7.10 类名；常见现代菜单别名会由平台映射表转换。需要让基类或接口规则覆盖子类时，
-显式写 `"class_match": "assignable"`。第三方 Mod 的实机兼容性仍需按具体组合验证。
+v1 文件继续使用 `target_type`、`target`、`class_match`、`custom_textures` 等旧字段。大写 `Kyeitk` 是
+历史兼容入口，不是 v2/v3/v3.1 原生 manifest 路径。
 
 ## 开发者构建
 
-要求 64 位 JDK 8。ForgeGradle 1.2 不支持使用 JDK 17/21 构建。
+项目使用 ForgeGradle 1.2，要求 JDK 8。
 
 ```powershell
 $env:JAVA_HOME = 'C:\Path\To\JDK8'
 $env:Path = "$env:JAVA_HOME\bin;$env:Path"
-.\gradlew.bat clean build
+.\gradlew.bat clean build --no-daemon --console=plain
 ```
 
-构建脚本使用 Forge `1.7.10-10.13.4.1614-1.7.10` 和 MCP `stable_12`，并将已失效的旧 Mojang S3
-下载地址定向到官方 content-addressed URL。首次构建仍需网络。
-
-构建会输出重混淆 Shadow JAR：
+发布 JAR：
 
 ```text
-build/libs/RedFoxExpand-1.7.10-0.2.0.jar
+build/libs/RedFoxExpand-1.7.10-0.2.1.jar
 ```
 
 ## 文档
@@ -332,6 +238,7 @@ build/libs/RedFoxExpand-1.7.10-0.2.0.jar
 - [功能状态与实现边界](docs/FEATURES.md)
 - [材质包开发者 API](docs/resourcepack-api.md)
 - [Schema v3 响应式 UI 协议](docs/SCHEMA_V3.md)
+- [Schema v3.1 场景图与创作协议](docs/SCHEMA_V3_1.md)
 - [GUI 静态、动画与 Alpha 格式](docs/GUI_RESOURCE_FORMAT.md)
 - [材质包目录与迁移规范](docs/RESOURCE_PACK_STRUCTURE.md)
 - [任意位置自定义贴图](docs/custom-textures.md)
@@ -340,17 +247,16 @@ build/libs/RedFoxExpand-1.7.10-0.2.0.jar
 
 ## 当前限制
 
-- 仅支持 Minecraft 1.7.10 Forge 客户端容器 GUI，HUD 与 Widget 尚未实现；
-- 1.7.10 没有现代注册表化 GUI 标识，`menu_type`、`resource_location`、`mod_namespace` matcher 不可用；
-- v1 目录帧动画条件仍只有 `always` 和 `never`；动态效果请使用 Schema v3；
-- Schema v3 尚不支持 width/height/color 绑定、Texture State、自定义旋转枢轴、text/Slot target、
-  自定义变量/事件、Timer、User Function、循环/递归或 `every.mode=repeat`；
-- 不支持按钮/widget、Semantic Slot、Inspector 或玩家 3D 模型独立偏移；
-- Minecraft 1.7.10 原版没有 Recipe Book，因此不存在配方书跟随能力；
-- 旧标题/标签字段保留调用序号兼容语义，新包应使用显式 `font_rules`；
-- v1 大写目录依赖可枚举的文件夹/ZIP/JAR；自定义内存资源包应使用 native v2/v3；
-- 可选 Mixin Hook 被其他 coremod 改写时可能降级相应图层、高亮或字体功能；
-- 实际画面、F3+T、不同 GUI Scale、第三方 Mod 与 OpenGL 状态仍需客户端实机回归。
+- 当前仅处理 Minecraft 1.7.10 Forge 客户端的容器 GUI，HUD 与 Widget 尚未实现；
+- 1.7.10 没有现代注册表化 GUI 标识，`menu_type`、matcher `resource_location`、`mod_namespace` 不可用；
+- v3.0 Reactive target 仅为 Sprite；v3.1 target 可为 Sprite 或 Group；
+- Schema v3.1 Scene Graph 当前只作用于 Sprite/Group，Text 和 Slot 尚不能进入场景树或作为响应式 target；
+- 不支持 Semantic Slot、Layout Container、Component、Clip/Scroll 或 Inspector；
+- 尚无 Texture State、width/height/color Binding、自定义变量/事件、Timer、User Function、循环/递归或
+  `every.mode=repeat`；
+- `self.*` / `parent.*` 提供静态基础布局几何，不读取本帧 Binding/Animation 后的最终矩阵；
+- Minecraft 1.7.10 原版没有 Recipe Book，因此该能力不适用于此分支；
+- 第三方 Mod GUI、不同 GUI Scale 与渲染 Mod 组合的表现可能因环境而异。
 
 ## 许可
 

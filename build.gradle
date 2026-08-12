@@ -15,7 +15,7 @@ plugins {
 
 apply plugin: 'forge'
 
-version = '0.2.0'
+version = '0.2.1'
 group = 'redfoxexpand'
 archivesBaseName = 'RedFoxExpand-1.7.10'
 
@@ -127,7 +127,7 @@ jar {
 }
 
 task prepareRelease(type: Copy, dependsOn: build) {
-    description = 'Copies the verified, reobfuscated distribution JAR into release/.'
+    description = 'Copies the reobfuscated distribution JAR into release/.'
     group = 'distribution'
     from "$buildDir/libs/${archivesBaseName}-${version}.jar"
     into "$projectDir/release"

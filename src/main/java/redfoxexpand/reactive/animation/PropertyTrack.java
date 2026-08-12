@@ -10,10 +10,16 @@ import java.util.List;
 public final class PropertyTrack {
     private final ReactiveProperty property;
     private final Interpolation interpolation;
+    private final CompositionMode composition;
     private final List<PropertyKeyframe> keyframes;
 
     public PropertyTrack(ReactiveProperty property, Interpolation interpolation,
                          List<PropertyKeyframe> keyframes) {
+        this(property, interpolation, CompositionMode.defaultFor(property), keyframes);
+    }
+
+    public PropertyTrack(ReactiveProperty property, Interpolation interpolation,
+                         CompositionMode composition, List<PropertyKeyframe> keyframes) {
         if (property == ReactiveProperty.VISIBLE) {
             throw new IllegalArgumentException("visible is not an animation track property");
         }
@@ -22,11 +28,13 @@ public final class PropertyTrack {
         }
         this.property = property;
         this.interpolation = interpolation;
+        this.composition = composition;
         this.keyframes = Collections.unmodifiableList(new ArrayList<PropertyKeyframe>(keyframes));
     }
 
     public ReactiveProperty getProperty() { return property; }
     public Interpolation getInterpolation() { return interpolation; }
+    public CompositionMode getComposition() { return composition; }
     public List<PropertyKeyframe> getKeyframes() { return keyframes; }
 
     public double sample(long timeMillis) {
@@ -48,4 +56,5 @@ public final class PropertyTrack {
         return keyframes.get(keyframes.size() - 1).getValue();
     }
 }
+
 

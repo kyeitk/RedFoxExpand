@@ -240,6 +240,8 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
                     SpriteOverlay.Layer.UNDERLAY,
                     guiLeft,
                     guiTop,
+                    xSize,
+                    ySize,
                     width,
                     height,
                     false,
@@ -247,6 +249,7 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
             );
             redfoxexpand$modifier.renderTextLayer(
                     SpriteOverlay.Layer.UNDERLAY, guiLeft, guiTop,
+                    xSize, ySize,
                     width, height, false
             );
         }
@@ -296,6 +299,8 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
                     SpriteOverlay.Layer.BACKGROUND,
                     guiLeft,
                     guiTop,
+                    xSize,
+                    ySize,
                     width,
                     height,
                     false,
@@ -303,6 +308,7 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
             );
             redfoxexpand$modifier.renderTextLayer(
                     SpriteOverlay.Layer.BACKGROUND, guiLeft, guiTop,
+                    xSize, ySize,
                     width, height, false
             );
         }
@@ -333,6 +339,8 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
                     SpriteOverlay.Layer.FOREGROUND,
                     guiLeft,
                     guiTop,
+                    xSize,
+                    ySize,
                     width,
                     height,
                     true,
@@ -340,6 +348,7 @@ public abstract class MixinGuiContainer extends GuiScreen implements GuiModifier
             );
             redfoxexpand$modifier.renderTextLayer(
                     SpriteOverlay.Layer.FOREGROUND, guiLeft, guiTop,
+                    xSize, ySize,
                     width, height, true
             );
         }

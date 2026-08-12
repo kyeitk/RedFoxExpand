@@ -29,12 +29,8 @@ public final class AnimationController {
     }
 
     public AnimationProperties evaluate(String target, long nowMillis) {
-        double translateX = 0.0D;
-        double translateY = 0.0D;
-        Double alpha = null;
-        double scaleX = 1.0D;
-        double scaleY = 1.0D;
-        double rotationZ = 0.0D;
+        java.util.List<AnimationProperties.Contribution> contributions =
+                new java.util.ArrayList<AnimationProperties.Contribution>();
         Iterator<Map.Entry<Key, Running>> iterator = running.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<Key, Running> entry = iterator.next();
@@ -51,17 +47,11 @@ public final class AnimationController {
                     : Math.min(elapsed, animation.getDurationMillis());
             for (PropertyTrack track : animation.getTracks()) {
                 double value = track.sample(position);
-                if (track.getProperty() == ReactiveProperty.TRANSLATE_X) translateX += value;
-                else if (track.getProperty() == ReactiveProperty.TRANSLATE_Y) translateY += value;
-                else if (track.getProperty() == ReactiveProperty.ALPHA) alpha = Double.valueOf(value);
-                else if (track.getProperty() == ReactiveProperty.SCALE_X) scaleX *= value;
-                else if (track.getProperty() == ReactiveProperty.SCALE_Y) scaleY *= value;
-                else if (track.getProperty() == ReactiveProperty.ROTATION_Z) rotationZ += value;
+                contributions.add(new AnimationProperties.Contribution(
+                        track.getProperty(), track.getComposition(), value));
             }
         }
-        if (translateX == 0.0D && translateY == 0.0D && alpha == null
-                && scaleX == 1.0D && scaleY == 1.0D && rotationZ == 0.0D) return AnimationProperties.NONE;
-        return new AnimationProperties(translateX, translateY, alpha, scaleX, scaleY, rotationZ);
+        return AnimationProperties.of(contributions);
     }
 
     public boolean isRunning(String target, String animationId, long nowMillis) {
@@ -122,4 +112,5 @@ public final class AnimationController {
         }
     }
 }
+
 

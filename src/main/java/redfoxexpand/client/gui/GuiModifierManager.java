@@ -81,7 +81,7 @@ public final class GuiModifierManager {
             refreshCurrentScreen();
             previous.closeTextures();
             RedFoxExpand.LOGGER.info(
-                    "Loaded generation {}: {} v1/legacy and {} native Schema v2/v3 GUI definitions",
+                    "Loaded generation {}: {} v1/legacy and {} native Schema v2/v3/v3.1 GUI definitions",
                     next.generation, next.legacy.size(), next.nativeDefinitions.size());
         } catch (Throwable error) {
             nextTextures.close();
@@ -106,7 +106,7 @@ public final class GuiModifierManager {
                 Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
                 List<SchemaV2Parser.ParsedDefinition> parsed = ref.apiVersion == 2
                         ? schemaV2.parse(reader, ref.toString())
-                        : schemaV3.parse(reader, ref.toString());
+                        : schemaV3.parse(reader, ref.toString(), ref.apiVersion);
                 for (int index = 0; index < parsed.size(); index++) {
                     SchemaV2Parser.ParsedDefinition item = parsed.get(index);
                     DefinitionCandidate candidate = new DefinitionCandidate(

@@ -20,8 +20,7 @@ hs_err_pid*
 *.iws
 *.launch
 
-# Local-only test/resource-pack material. Some fixtures contain third-party
-# assets whose licences forbid redistribution.
+# Local-only resources and development material.
 src/test/
 test/
 tests/
@@ -36,8 +35,7 @@ tools/
 *.zip
 §*/
 
-# Internal design, porting, audit and validation notes are not part of the
-# public release snapshot.
+# Development notes are not part of the public release snapshot.
 docs/ARCHITECTURE.md
 docs/MC1710_API_MAPPING.md
 docs/MC1710_COMPATIBILITY.md
@@ -45,6 +43,7 @@ docs/MC1710_PORT_FEATURE_MATRIX.md
 docs/MC1710_PORT_PLAN.md
 docs/REFACTOR_PLAN.md
 docs/SCHEMA_V3_PORT_REPORT.md
+docs/SCHEMA_V3_1_PORT_REPORT.md
 docs/TESTING.md
 
 # Operating-system noise

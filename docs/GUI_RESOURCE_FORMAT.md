@@ -67,7 +67,7 @@
 
 `condition` 当前只支持 `always` 和 `never`。时长范围为 1..600000 ms，帧数为 1..4096。
 
-上例是 v1 目录帧动画。strict v2/v3 的 Sprite 在 `animation` 对象内声明 texture frame 数组，并在 reload
+上例是 v1 目录帧动画。strict v2/v3/v3.1 的 Sprite 在 `animation` 对象内声明 texture frame 数组，并在 reload
 阶段校验 PNG/像素预算；渲染阶段只选择缓存的 `ResourceLocation`。Schema v3 Definition 顶层的
 `animations` 是另一套 Property Animation，只改变 translate/alpha/scale/rotation，不选择纹理帧，二者可组合。
 
@@ -89,4 +89,4 @@ Slot 规则匹配修改前的基础坐标。reload 或再次应用时只撤销 R
 可见区域。Slot、背景和材质坐标因此不随药水效果出现而移动。
 
 自定义贴图使用普通 Alpha 混合，并在批次结束恢复颜色、纹理、Blend、Alpha Test、Depth、Blend Func 与
-当前绑定纹理。源码和 JVM 几何测试不能代替显卡驱动上的真实状态验证。
+当前绑定纹理。最终效果可能因显卡驱动和其他渲染 Mod 的状态管理而异。

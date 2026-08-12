@@ -5,19 +5,37 @@ import com.google.gson.JsonObject;
 import redfoxexpand.client.compat.LegacyResourceAdapter;
 import redfoxexpand.client.config.GuiTextureResolver;
 import redfoxexpand.client.render.GuiTexture;
+import redfoxexpand.core.DefinitionCandidate;
+import redfoxexpand.core.GuiDefinition;
 import net.minecraft.util.ResourceLocation;
 
 import java.util.Locale;
 import java.util.Map;
-import redfoxexpand.client.resource.ResourceLimits;
-import redfoxexpand.core.DefinitionCandidate;
 
 public final class SpriteOverlay {
 
     public enum Anchor {
         GUI,
         SCREEN_CENTER,
-        SCREEN;
+        SCREEN,
+        GUI_TOP_LEFT,
+        GUI_TOP_CENTER,
+        GUI_TOP_RIGHT,
+        GUI_CENTER_LEFT,
+        GUI_CENTER,
+        GUI_CENTER_RIGHT,
+        GUI_BOTTOM_LEFT,
+        GUI_BOTTOM_CENTER,
+        GUI_BOTTOM_RIGHT,
+        SCREEN_TOP_LEFT,
+        SCREEN_TOP_CENTER,
+        SCREEN_TOP_RIGHT,
+        SCREEN_CENTER_LEFT,
+        SCREEN_CENTER_RIGHT,
+        SCREEN_BOTTOM_LEFT,
+        SCREEN_BOTTOM_CENTER,
+        SCREEN_BOTTOM_RIGHT,
+        PARENT;
 
         static Anchor parse(String value) {
             String normalized = value.toLowerCase(Locale.ROOT);
@@ -31,6 +49,11 @@ public final class SpriteOverlay {
                     || "screen_top_left".equals(normalized)
                     || "absolute".equals(normalized)) {
                 return SCREEN;
+            }
+            try {
+                return valueOf(normalized.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ignored) {
+                // Fall through to the stable public error below.
             }
             throw new IllegalArgumentException("Unsupported sprite anchor: " + value);
         }
@@ -98,6 +121,8 @@ public final class SpriteOverlay {
     public final Anchor anchor;
     public final String elementId;
     public final DefinitionCandidate reactiveScope;
+    /** Exact core element for v3/v3.1 identity and Scene Graph lookup; null for v1. */
+    public final GuiDefinition.Sprite nativeSprite;
 
     private SpriteOverlay(
             GuiTexture texture,
@@ -117,7 +142,8 @@ public final class SpriteOverlay {
             Layer layer,
             Anchor anchor,
             String elementId,
-            DefinitionCandidate reactiveScope
+            DefinitionCandidate reactiveScope,
+            GuiDefinition.Sprite nativeSprite
     ) {
         this.texture = texture;
         this.x = x;
@@ -137,6 +163,7 @@ public final class SpriteOverlay {
         this.anchor = anchor;
         this.elementId = elementId;
         this.reactiveScope = reactiveScope;
+        this.nativeSprite = nativeSprite;
     }
 
     public static SpriteOverlay parse(JsonObject json) {
@@ -171,15 +198,15 @@ public final class SpriteOverlay {
                 ? textureResolver.resolveAnimation(texture)
                 : textureResolver.resolveStatic(texture, guiAtlasId);
 
-        float x = finite(JsonSupport.floatingAlias(json, "screen_x", "x", 0.0F), "x");
-        float y = finite(JsonSupport.floatingAlias(json, "screen_y", "y", 0.0F), "y");
-        float z = finite(JsonSupport.floating(json, "z", 0.0F), "z");
-        float width = finite(JsonSupport.floating(json, "width", 16.0F), "width");
-        float height = finite(JsonSupport.floating(json, "height", 16.0F), "height");
-        float sourceWidth = finite(JsonSupport.floating(json, "source_width", width), "source_width");
-        float sourceHeight = finite(JsonSupport.floating(json, "source_height", height), "source_height");
-        float textureWidth = finite(JsonSupport.floatingAlias(json, "tex_width", "texture_width", 256.0F), "texture_width");
-        float textureHeight = finite(JsonSupport.floatingAlias(json, "tex_height", "texture_height", 256.0F), "texture_height");
+        float x = JsonSupport.floatingAlias(json, "screen_x", "x", 0.0F);
+        float y = JsonSupport.floatingAlias(json, "screen_y", "y", 0.0F);
+        float z = JsonSupport.floating(json, "z", 0.0F);
+        float width = JsonSupport.floating(json, "width", 16.0F);
+        float height = JsonSupport.floating(json, "height", 16.0F);
+        float sourceWidth = JsonSupport.floating(json, "source_width", width);
+        float sourceHeight = JsonSupport.floating(json, "source_height", height);
+        float textureWidth = JsonSupport.floatingAlias(json, "tex_width", "texture_width", 256.0F);
+        float textureHeight = JsonSupport.floatingAlias(json, "tex_height", "texture_height", 256.0F);
         boolean hasRegion = json.has("u") || json.has("v")
                 || json.has("source_width") || json.has("source_height")
                 || json.has("tex_width") || json.has("tex_height")
@@ -208,8 +235,8 @@ public final class SpriteOverlay {
                 x,
                 y,
                 z,
-                finite(JsonSupport.floating(json, "u", 0.0F), "u"),
-                finite(JsonSupport.floating(json, "v", 0.0F), "v"),
+                JsonSupport.floating(json, "u", 0.0F),
+                JsonSupport.floating(json, "v", 0.0F),
                 width,
                 height,
                 sourceWidth,
@@ -221,12 +248,13 @@ public final class SpriteOverlay {
                 layer,
                 anchor,
                 null,
+                null,
                 null
         );
     }
 
     public static SpriteOverlay fromNative(
-            redfoxexpand.core.GuiDefinition.Sprite sprite,
+            GuiDefinition.Sprite sprite,
             GuiTexture texture,
             DefinitionCandidate scope
     ) {
@@ -238,9 +266,8 @@ public final class SpriteOverlay {
                 (float) sprite.sourceWidth(), (float) sprite.sourceHeight(),
                 (float) sprite.textureWidth(), (float) sprite.textureHeight(),
                 sprite.fullTexture(), sprite.color(),
-                Layer.valueOf(sprite.layer().name()),
-                Anchor.valueOf(sprite.anchor().name()),
-                sprite.id(), scope
+                Layer.valueOf(sprite.layer().name()), Anchor.valueOf(sprite.anchor().name()),
+                sprite.id(), scope, sprite
         );
     }
 
@@ -300,10 +327,6 @@ public final class SpriteOverlay {
         }
     }
 
-    private static float finite(float value, String field) {
-        return ResourceLimits.finiteGuiValue(value, field);
-    }
-
     private static boolean isGuiAtlasId(ResourceLocation texture) {
         String path = texture.getResourcePath();
         return !path.startsWith("textures/") && !path.endsWith(".png");
@@ -321,19 +344,31 @@ public final class SpriteOverlay {
         return layer == Layer.FOREGROUND;
     }
 
-    /** Native v2 and v3 sprites share the managed native TextureManager lifetime. */
     public boolean isNative() {
         return reactiveScope != null;
     }
 
     public float resolveRenderX(int guiLeft, int screenWidth, boolean matrixAtGuiOrigin) {
+        return resolveRenderX(guiLeft, 0, screenWidth, matrixAtGuiOrigin);
+    }
+
+    public float resolveRenderX(int guiLeft, int guiWidth, int screenWidth,
+                                boolean matrixAtGuiOrigin) {
         float originX;
         if (anchor == Anchor.SCREEN_CENTER) {
             originX = screenWidth / 2.0F;
-        } else if (anchor == Anchor.SCREEN) {
+        } else if (anchor == Anchor.SCREEN || anchor == Anchor.SCREEN_TOP_LEFT
+                || anchor == Anchor.PARENT) {
             originX = 0.0F;
-        } else {
+        } else if (anchor == Anchor.GUI || anchor == Anchor.GUI_TOP_LEFT) {
             originX = guiLeft;
+        } else {
+            boolean gui = anchor.name().startsWith("GUI_");
+            float left = gui ? guiLeft : 0.0F;
+            float width = gui ? guiWidth : screenWidth;
+            if (anchor.name().endsWith("_LEFT")) originX = left;
+            else if (anchor.name().endsWith("_RIGHT")) originX = left + width;
+            else originX = left + width / 2.0F;
         }
         if (matrixAtGuiOrigin) {
             originX -= guiLeft;
@@ -342,13 +377,26 @@ public final class SpriteOverlay {
     }
 
     public float resolveRenderY(int guiTop, int screenHeight, boolean matrixAtGuiOrigin) {
+        return resolveRenderY(guiTop, 0, screenHeight, matrixAtGuiOrigin);
+    }
+
+    public float resolveRenderY(int guiTop, int guiHeight, int screenHeight,
+                                boolean matrixAtGuiOrigin) {
         float originY;
         if (anchor == Anchor.SCREEN_CENTER) {
             originY = screenHeight / 2.0F;
-        } else if (anchor == Anchor.SCREEN) {
+        } else if (anchor == Anchor.SCREEN || anchor == Anchor.SCREEN_TOP_LEFT
+                || anchor == Anchor.PARENT) {
             originY = 0.0F;
-        } else {
+        } else if (anchor == Anchor.GUI || anchor == Anchor.GUI_TOP_LEFT) {
             originY = guiTop;
+        } else {
+            boolean gui = anchor.name().startsWith("GUI_");
+            float top = gui ? guiTop : 0.0F;
+            float height = gui ? guiHeight : screenHeight;
+            if (anchor.name().contains("_TOP_")) originY = top;
+            else if (anchor.name().contains("_BOTTOM_")) originY = top + height;
+            else originY = top + height / 2.0F;
         }
         if (matrixAtGuiOrigin) {
             originY -= guiTop;
@@ -373,3 +421,4 @@ public final class SpriteOverlay {
     }
 
 }
+

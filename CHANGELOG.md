@@ -1,55 +1,67 @@
 # Changelog
 
-本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。Minecraft 1.7.10 版本使用
-`vX.Y.Z-mc1.7.10` Git Tag。
+本项目使用语义化版本号，Minecraft 目标版本通过 Git Tag 后缀区分。
+
+## [Unreleased]
+
+## [0.2.1-mc1.7.10] - 2026-08-12
+
+### Added
+
+- 新增 Schema v3.1：严格数值 `api_version: 3.1`、统一 `elements`、Sprite/Group 与 Parent/Child 场景树；
+- 新增 GUI/Screen 九点 Anchor、Element Pivot、局部坐标和父级平移、缩放、旋转、显隐、透明度继承；
+- 新增稳定的 `layer → z → scene order` 绘制顺序；
+- 新增 Definition-local `constants`、按声明顺序求值的 `values`；
+- 新增 Binding 可用的 `self.*` / `parent.*` 基础布局几何；
+- 新增 `replace`、`add`、`multiply` 属性动画合成；
+- Group 可作为 Binding、Animation 与 Action target；
+- 1.7.10 `GL11/GL14 + Tessellator` 渲染桥新增 root-to-leaf 场景矩阵与继承式状态组合；
+- 新增完整 Schema v3.1 创作协议与 1.7.10 使用示例。
+
+### Changed
+
+- manifest/config 对 `2`、`3`、`3.1` 使用精确版本读取，不再截断或猜测未来小版本；
+- 功能边界、未实现列表和材质包 API 同步至 `0.2.1`；
+- v1、v2 与 v3.0 入口保持原有兼容行为；
+- `font_rules`、药水布局、同资源包 config 来源隔离和旧纹理清理保持兼容。
 
 ## [0.2.0-mc1.7.10] - 2026-08-11
 
 ### Added
 
-- 移植与 1.8.9/26.2 同协议的 Java 8 Reactive Core：Runtime Context、Expression、Binding、Event、
-  Behavior、Action、Property Animation 与无漂移 Property Pipeline；
-- native manifest 扩展为 strict Schema v2/v3，并加入稳定 Sprite ID、严格字段/引用/capability/预算校验；
-- 新增 1.7.10 玩家、GUI、screen 与 LWJGL mouse snapshot，Forge legacy FML `ClientTickEvent.END`
-  每 tick 推进一次，每个 `GuiContainer` 独占 runtime；
-- 新增 visible/alpha/translate/scale/rotation、numeric smoothing、smoothstep、health/burning/screen 事件、
-  `every + coalesce` 和 play/stop/set action；
-- 新增 native TextureSpec、inline 帧动画、PNG/IHDR/像素预算与完整 Schema v3 公开文档；
-- 版本号更新为 `0.2.0`。
+- 移植 Java 8 Reactive Core：Runtime Context、Expression、Binding、Event、Behavior、Action、
+  Property Animation 与无漂移 Property Pipeline；
+- 原生 manifest 扩展为严格 Schema v2/v3，并加入稳定 Sprite ID、字段、引用、能力与预算检查；
+- 新增 1.7.10 玩家、GUI、Screen 与 LWJGL mouse snapshot；
+- 新增 Forge `ClientTickEvent.END` 状态推进和每个 `GuiContainer` 独立运行时；
+- 新增 visible、alpha、translate、scale、rotation、numeric smoothing 与 smoothstep；
+- 新增 health、burning、screen 事件、`every + coalesce` 和 play/stop/set Action；
+- 新增原生 TextureSpec、内联帧动画和 PNG/IHDR/像素预算。
 
 ### Fixed
 
-- 1.7.10 `IResource` 无 pack name 时，由 ConfigRef 保留实际 active `IResourcePack`，确保 config 与
-  声明它的 manifest 从同一资源包读取；
-- 修复 v2/v3 切包后 TextureManager 重载上一包旧 PNG：仅移除由 RedFoxExpand 首次创建的
-  `SimpleTexture`，不清理原版或其他 Mod 的共享纹理；
-- reload 顶层失败改为保留上一 immutable generation；成功替换后清理旧 per-screen Reactive 状态；
-- 动画停止、GUI 关闭或 generation 替换后恢复基础 transform，不累计位移；
-- 保留既有 1.7.10 背景矩阵、Slot delta、`font_rules`、药水右侧布局和 legacy/v1/v2/v3 共存架构。
-
-### Release
-
-- 公开 `1.7.10` 分支仅包含主源码、构建脚本、公开文档和发布 JAR；
-- 排除内部测试/验证代码、示例资源包、移植审计资料、构建缓存和受限制第三方素材。
+- `IResource` 无资源包名称时，由 ConfigRef 持有实际活动 `IResourcePack` 并从同包读取 config；
+- 修复 v2/v3 切包后 TextureManager 继续读取上一资源包 PNG 的问题；
+- 仅移除 RedFoxExpand 创建的 `SimpleTexture`，不影响原版或其他 Mod 共享纹理；
+- 资源重载失败时保留上一可用 generation；
+- generation 替换后释放旧 per-screen 响应式状态；
+- 保留既有背景矩阵、Slot delta、`font_rules`、药水右侧布局和多版本入口共存架构。
 
 ## [0.1.0-mc1.7.10] - 2026-08-08
 
 ### Added
 
-- 新增 Minecraft 1.7.10 / Forge `10.13.4.1614` 独立构建；
+- 建立 Minecraft 1.7.10 / Forge `10.13.4.1614` 独立项目；
 - 移植 GUI 配置、槽位、三层贴图、动画、文本、尺寸、药水布局和 F3+T 生命周期；
-- 新增 `platform/forge1710` API、类名、标题和背景适配；
-- 新增 native lowercase Kyeitk v2 manifest，同时保留跨版本 v1 与旧 Polytone 格式；
-- legacy、v1、v2 同时生成候选，并按稳定 `id`、`priority` 和 `append/replace/disable` 合并；
-- 新增显式 `font_rules`、现代 `*Menu` 名称映射和资源预算；
-- 新增 ForgeGradle 1.2 失效下载地址到 Mojang 官方 content-addressed URL 的构建适配；
-- 新增面向材质包作者和开发者的 1.7.10 文档。
+- 新增 `platform/forge1710` API、类名、标题与背景适配；
+- 新增小写原生 v2 manifest，同时保留 v1 与旧 Polytone 入口；
+- 新增 Definition `id`、`priority`、`operation` 与显式 `font_rules`；
+- 新增配置、列表、图片和动态纹理资源预算。
 
 ### Fixed
 
-- 修复 Slot 重载时覆盖其他 Mod 修改的问题，只撤销 RedFoxExpand 自身记录的偏移；
-- 修复扩展 GUI 背景绘制时伪造屏幕宽高的问题；
-- 修复 Mixin AP 生成的 Shadow SRG 未接入 ForgeGradle `reobf`，导致生产客户端 Mixin 失效；
-- 修复可选 Slot/GUI Mixin 缺失时因接口强制转换而崩溃的问题；
-- 修复药水效果出现时玩家背包左移，效果列表改为显示在 GUI 右侧可见区域。
-
+- Slot 只撤销 RedFoxExpand 自身 delta；
+- 背景不再伪造 Screen 宽高；
+- ForgeGradle 1.2 的旧 Mojang 地址改为官方 content-addressed URL；
+- 修复 Mixin AP Shadow SRG 未接入 ForgeGradle `reobf` 的问题；
+- 可选 Slot/GUI Mixin 缺失时安全降级。

@@ -1,6 +1,7 @@
 # RedFoxExpand Schema v3：Reactive UI Protocol
 
-本文记录 RedFoxExpand 1.7.10 `0.2.0` 已实现的 Schema v3 规范。Reactive Core 与 26.2 使用逐文件
+本文记录 RedFoxExpand 1.7.10 `0.2.0` 起保留兼容的 Schema v3.0 规范。`0.2.1` 新增 v3.1，详见
+[`SCHEMA_V3_1.md`](SCHEMA_V3_1.md)。Reactive Core 与 26.2 使用逐文件
 相同的 Java 8 源码；Minecraft/Forge 类名只属于 1.7.10 adapter，不属于协议语义。
 
 ## 1. 设计原则
@@ -477,7 +478,7 @@ matcher 会在重载时明确拒绝；请使用 exact/assignable screen/menu cla
 
 ## 26. Full Example
 
-下面是一份完整核心 config。将对应 PNG 放入配置引用的位置，并按本文 Manifest 章节建立发现入口即可使用：
+下面给出一份完整核心 config：
 
 ```json
 {
@@ -539,6 +540,5 @@ matcher 会在重载时明确拒绝；请使用 exact/assignable screen/menu cla
 }
 ```
 
-当前限制：HUD、Widget/Component、Semantic Slot、Texture State、width/height/color Binding、
-自定义旋转枢轴/3D 网格形变、Custom Variable/Event、Timer、User Function、Loop/递归、
-`every.mode=repeat`、Inspector，以及 text/Slot reactive target 均未实现。
+当前限制：HUD、Widget、Texture State、自定义旋转枢轴/3D 网格形变、Custom Variable/Event、Timer、User Function、
+Loop/递归，以及 text/Slot reactive target 均未实现。

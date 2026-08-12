@@ -1,21 +1,21 @@
 # RedFoxExpand 材质包开发者 API
 
-本文档对应 RedFoxExpand `0.2.0`、Minecraft Java Edition `1.7.10` 和 Forge
-`10.13.4.1614`。它既是 API 参考，也是资源包迁移与排错手册。后续修改解析器字段、默认值、
-合并顺序或示例时，必须同步维护本文档。
+本文档对应 RedFoxExpand `0.2.1`、Minecraft Java Edition `1.7.10` 和 Forge
+`10.13.4.1614`。它既是 API 参考，也是资源包迁移与排错手册。
 
-## 0.2.0 Schema 选择
+## 0.2.1 Schema 选择
 
-RedFoxExpand 1.7.10 同时提供三条兼容入口：
+RedFoxExpand 1.7.10 同时提供四条兼容入口：
 
 | Schema | 发现入口 | 用途 | 兼容行为 |
 |---|---|---|---|
 | v1 | `assets/Kyeitk/config/**/*.json` | 既有 1.7.10 Kyeitk 格式 | 字段与 0.1.0 保持兼容 |
 | v2 | `assets/kyeitk/redfoxexpand/index.json`，`api_version: 2` | 严格 Definition/manifest | 未知字段、错误类型直接拒绝 config |
 | v3 | 同一 manifest，`api_version: 3` | v2 + Reactive UI | v2 Sprite 必须增加稳定 `id` 才能成为 target |
+| v3.1 | 同一 manifest，`api_version: 3.1` | Scene Graph / Authoring | `elements`、Group、Pivot、符号与显式合成；不自动改写 v3.0 |
 
-大写 v1、旧 Polytone 与小写 v2/v3 会同时成为候选；任何一种格式都不会全局关闭另一种格式。
-重复规则应通过稳定 Definition ID 与 `append/replace/disable` 管理。v2/v3 之间不做字段猜测或自动升级。
+大写 v1 与小写 v2/v3 可以同时加载；小写 manifest 不会使 v1 全局失效。没有大写 v1 配置时，
+0.1.0 的旧 Polytone 回退路径仍保留。v2/v3 之间不做字段猜测或自动升级。
 
 ### Native manifest
 
@@ -26,11 +26,10 @@ RedFoxExpand 1.7.10 同时提供三条兼容入口：
 }
 ```
 
-- `api_version`：必填 integer，仅允许 `2` 或 `3`；
+- `api_version`：必填 JSON number，仅允许 `2`、`3` 或 `3.1`；字符串和内部编号 `31` 非法；
+- manifest/config 版本必须精确一致，`3` 与 `3.1` 混用会拒绝 config；
 - `configs`：必填 string array，默认无，最多 256 项；
 - 路径必须安全、为小写 `kyeitk:redfoxexpand/config/*.json`，并从声明它的同一个资源包读取；
-- 1.7.10 的 `IResource` 不公开资源包名称，因此实现直接保留实际 `IResourcePack` 所有权并从该 pack
-  打开 config，不按 `getAllResources()` 索引猜测来源；
 - manifest 错误只隔离该 manifest；config 错误隔离该 config；纹理错误隔离对应 Definition；
 - 顶层 reload 构建失败时保留上一 immutable generation；成功时再原子替换并销毁旧运行态。
 - v2/v3 Sprite 实际首次绑定且 TextureManager 中尚无同 ID 对象时，该 `SimpleTexture` 归当前
@@ -114,17 +113,27 @@ Schema v3 的完整变量、表达式语法、Binding、Event、Property、Anima
 - property：`visible`、`alpha`、`translate_x/y`、`scale_x/y`、`rotation_z`；
 - Runtime Context 包含 player、screen、gui 与 `mouse.x/y/gui_x/gui_y/left_down/right_down`。
 
-Reactive target 目前只能是同一 Definition 中的 v3 Sprite ID。表达式、事件、Action、Property 或 target
+v3.0 Reactive target 是同一 Definition 中的 Sprite ID；v3.1 target 可为 Sprite 或 Group。表达式、事件、Action、Property 或 target
 引用错误会在 reload 阶段拒绝 config；运行时表达式错误会按来源 key 限流记录（每个 GUI 同 key 一次、最多 64 个），只回退该次属性求值并保留基础值。所有 transform
 均为临时合成，不修改基础 x/y/width/height；动画停止、GUI 关闭或 generation 替换后返回基础值。
 
+### Schema v3.1 Scene/Authoring API
+
+v3.1 用 `elements` 替代 `sprites`，元素 `type` 为 `sprite` 或 `group`。Group 通过 `children` 建立单父、
+无环、最大深度 32 的场景树；子元素 Anchor 必须为隐式/显式 `parent`。根可使用 GUI/Screen 九点 Anchor，
+每个节点可定义数值或预设 Pivot。Group 的 visible、alpha、translate、scale、rotation 会被子 Sprite 继承。
+
+`constants` 接受 number/boolean/string；`values` 按声明顺序编译和求值；Binding 额外可读取
+`self.local_x/y/world_x/y/world_center_x/y/width/height`，有父元素时可读取同组 `parent.*`。动画 track
+可用 `compose: replace|add|multiply`，按动画启动序和 track 声明序确定性应用。完整字段、默认值、预算、
+所有可定义数值和错误行为见 [`SCHEMA_V3_1.md`](SCHEMA_V3_1.md)。
+
 以下各节保留 v1 API 的完整字段参考。
 
-## 1. v1 适配契约
+## 1. v1 兼容入口
 
-0.2.0 继续保留玩家背包的 v1 兼容语义：Kyeitk 相对路径、`screen_center`、`underlay`、浮点尺寸与
-完整纹理取样均与 0.1.0 一致。公开仓库不包含内部测试代码、参考材质包、第三方图片或其 ZIP；
-全新克隆仍可独立构建，且不会改变或扩大任何第三方素材授权。
+`0.2.1` 继续支持 Kyeitk 相对路径贴图、`screen_center`、`underlay`、浮点尺寸和完整纹理取样语义。
+v1 与原生 v2/v3/v3.1 可以并存，资源来源和优先级仍按各自入口独立处理。
 
 ## 2. 文件位置与加载
 
@@ -199,7 +208,6 @@ assets/Kyeitk/textures/gui/picture.png
 | `sprites` | 数组 | `[]` | Polytone/旧格式兼容贴图 |
 | `custom_textures` | 数组 | `[]` | 推荐的新格式任意位置贴图 |
 | `texts` | 数组 | `[]` | 前景文字叠加 |
-| `font_rules` | 数组 | `[]` | v1 显式按文字/翻译结果/坐标/调用序号调整原版文字 |
 
 尺寸变更后的容器原点公式为：
 
@@ -210,9 +218,10 @@ guiTop  = baseGuiTop  + y_offset - height_offset / 2
 
 除法为 Java 整数除法。需要精确对称扩展时，建议使用偶数尺寸增量。
 
-在 1.7.10 玩家背包中，原版 `InventoryEffectRenderer.initGui` 会根据药水效果重算并左移水平原点。
-Mod 会在初始化后恢复修改尺寸对应的居中原点并保存最终 `guiLeft`。因此背景、槽位、人物模型、文字和
-`anchor: gui` 贴图在有/无药水时使用相同位置，配置作者不需要增加第二份补偿。
+在 1.7.10 玩家背包中，原版 `InventoryEffectRenderer` 会每 tick 重算水平原点，并在有药水效果时
+额外右移 GUI。Mod 会在初始化时捕获无药水偏移的居中原点，应用配置后保存最终 `guiLeft`，以后每次
+药水状态重算都恢复该最终原点。因此背景、槽位、人物模型、文字和 `anchor: gui` 贴图在有/无药水时
+使用完全相同的位置，配置作者不需要增加第二份补偿。
 
 药水效果列表保留原版内容和垂直排列，但水平位置改为 `guiLeft + xSize + 4`。若右侧空间不足，
 140 像素宽的列表会钳制到屏幕右边界内；极窄窗口下可能与 GUI 重叠，但不会继续把 GUI 本身推离中心。
@@ -248,10 +257,6 @@ Mod 会在初始化后恢复修改尺寸对应的居中原点并保存最终 `gu
 net.minecraft.world.inventory.InventoryMenu
 InventoryMenu
 ```
-
-上述 `InventoryMenu` 映射同时适用于 strict v2/v3。v1 兼容层还显式维护 Chest、Crafting、Furnace、
-Anvil、Merchant、BrewingStand、Hopper、Dispenser、Beacon、Enchantment 与 HorseInventory 的常用
-现代 `*Menu` 名；strict v2/v3 不会猜测这些额外名称，推荐直接写 1.7.10 Container 完整类名。
 
 类目标的 `class_match` 默认为 `exact`，只匹配运行时类本身。需要让基类或接口规则覆盖子类时显式启用：
 
@@ -530,13 +535,7 @@ minecraft:textures/gui/sprites/inventory.png
 
 文字在前景贴图之后绘制。
 
-## 10. v1 `font_rules`
-
-`font_rules` 至少需要一个 selector：`text`、`translation_key`、`match_x`、`match_y` 或 `ordinal`。
-多个 selector 为 AND；匹配后应用 `x_offset/y_offset` 和可选 `color`。它比旧标题/标签调用序号字段更稳定，
-但仍只属于 v1；strict v2/v3 使用 `text_rules` 的 `title/player_inventory` selector。
-
-## 11. 颜色格式
+## 10. 颜色格式
 
 支持：
 
@@ -550,7 +549,7 @@ minecraft:textures/gui/sprites/inventory.png
 
 下划线会被忽略，例如 `0x80_FF_40_40`。槽位渐变建议始终使用 `#AARRGGBB` 明确 alpha。
 
-## 12. 多文件与资源包优先级
+## 11. 多文件与资源包优先级
 
 - 同一 Kyeitk 相对路径存在于多个资源包时，由 RedFoxExpand 按 Minecraft 已启用资源包顺序选择
   最高优先级版本；
@@ -561,13 +560,12 @@ minecraft:textures/gui/sprites/inventory.png
 - 槽位、贴图和文字列表按合并顺序追加；
 - 单个 modifier 内，`sprites` 总是在 `custom_textures` 之前加入渲染列表；
 - 同一渲染层中的图片按列表顺序绘制，后绘制的透明图片覆盖先绘制图片的重叠像素。
-- legacy Polytone、v1 与 native v2/v3 会共同产生候选；同 ID 的 `replace/disable` 决定覆盖，不使用
-  “发现新格式就关闭旧格式”的全局开关。
+- 发现至少一份适用于当前环境的 Kyeitk 配置时，本快照不加载旧 Polytone 目录，避免迁移副本重复。
 
 为了让层级和覆盖关系容易维护，建议一个界面的背景与立绘放在同一个 JSON 中，并显式填写
 `texture_type`、`anchor` 和 `layer`。
 
-## 13. 完整玩家背包示例
+## 12. 完整玩家背包示例
 
 ```json
 {
@@ -600,7 +598,7 @@ minecraft:textures/gui/sprites/inventory.png
 
 只修改 `x/y` 可以移动图片，只修改 `width/height` 可以缩放图片，不需要重新编译 Mod。
 
-## 14. 错误处理与排错
+## 13. 错误处理与排错
 
 以下情况会在日志中记录错误并拒绝相应配置：
 
@@ -620,27 +618,36 @@ minecraft:textures/gui/sprites/inventory.png
 2. 检查 JSON 能否被严格解析；
 3. 检查物理目录是否为 `assets/Kyeitk/`，相对纹理路径是否与大小写完全一致；
 4. 临时只保留一张 `custom_textures` 图片；
-5. 使用 `screen_center` 和明显的 `x/y` 验证坐标；
+5. 使用 `screen_center` 和明显的 `x/y` 校准坐标；
 6. 执行 `F3+T` 后重新打开目标 GUI。
 
-## 15. 当前限制
+## 14. 当前限制
 
 - 仅作用于客户端 Minecraft 1.7.10 Forge 容器 GUI；
-- 不支持 HUD、按钮/widget、通用 Component 或 Semantic Slot；
+- 不支持按钮/widget 修改；
 - v1 目录帧动画条件仍只支持 `always/never`；Schema v3 的状态表达式和属性动画应使用
   `bindings/animations/behaviors`；
 - 不支持独立调整玩家 3D 模型位置；
 - native v2/v3 检查 PNG/像素预算，但不会要求 JSON 声明尺寸等于 PNG 原始尺寸；
 - `menu_type`、`resource_location`、`mod_namespace` matcher 在 1.7.10 明确不可用；
-- Reactive target 仅限 v3 Sprite；text/Slot target 尚未实现；
-- width、height、color Binding、Texture State、自定义旋转枢轴、custom variable/event、Timer、
-  User Function、loop/recursion、`every.mode=repeat` 与 Inspector 尚未实现；
+- v3.0 Reactive target 仅限 Sprite；v3.1 target 可为 Sprite 或 Group；
+- Text 与 Slot 尚不能进入 v3.1 Scene Graph 或作为响应式 target；
 - 无法取得后备文件的自定义 `IResourcePack` 不能提供大写 Kyeitk 目录；
-- 游戏内视觉效果、不同 GUI 缩放及与其他 Mod 的组合效果需由使用者验证。
+- 游戏内视觉效果、不同 GUI 缩放及与其他 Mod 的组合效果可能因环境而异。
+
+## 15. 材质包自检清单
+
+1. 启用材质包并打开目标容器；
+2. 检查所有图片透明背景、位置、缩放和层级；
+3. 检查原版槽位与鼠标点击区域一致；
+4. 检查至少两种 GUI 缩放和窗口尺寸；
+5. 保持 GUI 打开并执行 `F3+T`，确认不累计漂移；
+6. 禁用材质包并重载，确认附加内容完全消失；
+7. 查看日志，确认没有 `Invalid Kyeitk GUI config` 或纹理缺失警告。
 
 ## 16. Java 扩展接口
 
-这些接口面向后续 RedFoxExpand 模块复用，使用 Java 8；0.2.0 尚不承诺跨大版本二进制稳定性：
+这些接口面向后续 RedFoxExpand 模块复用，使用 Java 8；0.2.1 尚不承诺跨大版本二进制稳定性：
 
 | 接口 | 方法 | 用途与默认行为 |
 |---|---|---|
@@ -653,4 +660,11 @@ minecraft:textures/gui/sprites/inventory.png
 
 `GuiConfigLoader.load(source, reader, resolver)` 按单个 JSON 文件原子返回不可变 `GuiDefinition` 列表。
 
-文档最后同步日期：2026-08-11。
+0.2.0 起新增、0.2.1 扩展至 v3.1 的 Minecraft 无关公开包为 `redfoxexpand.reactive.*`，包括 Expression、EventDetector、Binding、
+BehaviorEngine、AnimationController、PropertyPipeline、RuntimeSnapshot 和 RuntimeVariables；
+`redfoxexpand.platform.forge1710.*` 只负责把 1.7.10 状态转换成纯 RuntimeSnapshot。资源包协议兼容不等于
+Java 二进制 API 承诺，外部 Mod 不应依赖 client/mixin 内部类。
+实现方若遇到非法路径、缺失资源或不支持的条件，应抛出 `IllegalArgumentException`；上层加载器会记录
+来源并跳过整份文件。扩展解析器不得在渲染线程逐帧执行 IO。
+
+文档最后同步日期：2026-08-10。
