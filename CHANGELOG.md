@@ -16,7 +16,6 @@
 - 新增 `replace`、`add`、`multiply` 属性动画合成；
 - Group 可作为 Binding、Animation 与 Action target；
 - 1.8.9 OpenGL 渲染桥新增 root-to-leaf 场景矩阵；
-- README 新增项目实例 GIF、项目方向和更新后的功能边界；
 - 新增完整 Schema v3.1 创作协议与 1.8.9 使用示例。
 
 ### Changed
