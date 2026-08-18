@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-18
+
+### Removed
+
+- 移除材质包像素预算上限（`MAX_ANIMATION_PIXELS`、`MAX_RELOAD_PIXELS`、`MAX_IMAGE_PIXELS`），
+  高分辨率材质包不再因像素总量被拒绝；
+- 添加 `MixinAbstractResourcePack` 拦截 Minecraft 原版 64MB 文件大小限制，
+  允许超大材质文件正常加载。
+
+### Changed
+
+- 版本号更新为 `0.2.2`。
+
 ## [0.2.1-mc1.8.9] - 2026-08-12
 
 ### Added
