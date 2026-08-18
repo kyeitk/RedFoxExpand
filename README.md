@@ -10,7 +10,7 @@
 RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **1.8.9 Forge** 客户端 Mod。它允许材质包作者通过
 JSON 修改容器 GUI 的尺寸、位置、Slot、贴图和文字，并使用响应式状态、动画与场景图构建动态界面。
 
-- 当前版本：`0.2.1`（Git Tag：`v0.2.1-mc1.8.9`）
+- 当前版本：`0.2.2`（Git Tag：`v0.2.2-mc1.8.9`）
 - Minecraft：`1.8.9`
 - Forge：`11.15.1.2318`
 - Java：`8`
