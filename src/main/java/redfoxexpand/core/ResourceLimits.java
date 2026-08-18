@@ -3,7 +3,7 @@ package redfoxexpand.core;
 /** Versioned safety budgets for untrusted resource-pack input. */
 public final class ResourceLimits {
     public static final int MAX_JSON_BYTES = 1024 * 1024;
-    public static final int MAX_PNG_BYTES = 32 * 1024 * 1024;
+    public static final int MAX_PNG_BYTES = Integer.MAX_VALUE;
     public static final int MAX_MANIFEST_CONFIGS = 256;
     public static final int MAX_CONFIGS_PER_PACK = 256;
     public static final int MAX_DEFINITIONS_PER_FILE = 256;
@@ -20,9 +20,9 @@ public final class ResourceLimits {
     public static final int MAX_PATH_LENGTH = 512;
     public static final int MAX_JSON_NESTING = 32;
     public static final int MAX_IMAGE_DIMENSION = 4096;
-    public static final long MAX_IMAGE_PIXELS = 16L * 1024L * 1024L;
-    public static final long MAX_ANIMATION_PIXELS = 64L * 1024L * 1024L;
-    public static final long MAX_RELOAD_PIXELS = 128L * 1024L * 1024L;
+    public static final long MAX_IMAGE_PIXELS = Long.MAX_VALUE;
+    public static final long MAX_ANIMATION_PIXELS = Long.MAX_VALUE;
+    public static final long MAX_RELOAD_PIXELS = Long.MAX_VALUE;
     public static final double MAX_GUI_MAGNITUDE = 65536.0;
 
     private ResourceLimits() {
