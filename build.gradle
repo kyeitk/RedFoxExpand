@@ -18,7 +18,7 @@ plugins {
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'org.spongepowered.mixin'
 
-version = '0.2.1'
+version = '0.2.2'
 group = 'redfoxexpand'
 archivesBaseName = 'RedFoxExpand-1.8.9'
 
@@ -50,6 +50,7 @@ dependencies {
         exclude module: 'commons-io'
         exclude module: 'log4j-core'
     }
+    testCompile 'junit:junit:4.13.2'
 }
 
 processResources {
@@ -94,7 +95,7 @@ reobf {
 build.dependsOn reobfShadowJar
 
 task prepareRelease(type: Copy, dependsOn: build) {
-    description = 'Copies the reobfuscated Shadow JAR into release/.'
+    description = 'Copies the verified, reobfuscated Shadow JAR into release/.'
     group = 'distribution'
     from "$buildDir/libs/${archivesBaseName}-${version}.jar"
     into "$projectDir/release"
