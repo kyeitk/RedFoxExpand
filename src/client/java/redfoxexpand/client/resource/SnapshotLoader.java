@@ -246,7 +246,8 @@ public final class SnapshotLoader {
 
     private static byte[] readLimited(InputStream input, int maximum, String label) throws IOException {
         try (input) {
-            byte[] result = input.readNBytes(maximum + 1);
+            int probe = (maximum == Integer.MAX_VALUE) ? Integer.MAX_VALUE : maximum + 1;
+            byte[] result = input.readNBytes(probe);
             if (result.length > maximum) throw new IOException(label + " exceeds " + maximum + " bytes");
             return result;
         }
