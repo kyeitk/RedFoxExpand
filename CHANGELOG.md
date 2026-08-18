@@ -3,6 +3,17 @@
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。Minecraft 26.2 版本使用
 `vX.Y.Z-mc26.2` Git Tag。
 
+## [0.2.2-mc26.2] - 2026-08-18
+
+### Added
+
+- 移除材质包像素预算上限（MAX_ANIMATION_PIXELS、MAX_RELOAD_PIXELS、
+  MAX_IMAGE_PIXELS），高分辨率材质包不再因像素总量被拒绝；
+
+### Changed
+
+- 版本号更新为 `0.2.2`。
+
 ## [0.2.1-mc26.2] - 2026-08-12
 
 ### Added
