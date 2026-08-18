@@ -10,7 +10,7 @@
 RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **26.2 Fabric** 客户端 Mod。它允许材质包作者通过
 原生小写资源域、Schema v2/v3/v3.1 JSON 配置和现代渲染管线修改容器 GUI，而不必修改或重新编译 Mod。
 
-- 当前版本：`0.2.1`（Git Tag：`v0.2.1-mc26.2`）
+- 当前版本：`0.2.2`（Git Tag：`v0.2.2-mc26.2`）
 - Minecraft：`26.2`
 - Fabric Loader：`0.19.3`
 - Fabric API：`0.156.0+26.2`
