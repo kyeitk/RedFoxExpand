@@ -15,8 +15,8 @@ public final class ResourceLimits {
     public static final int MAX_DISCOVERED_RESOURCES = 16384;
     public static final int MAX_RESOURCE_PATH_LENGTH = 512;
     public static final int MAX_IMAGE_DIMENSION = 4096;
-    public static final long MAX_IMAGE_PIXELS = 16L * 1024L * 1024L;
-    public static final long MAX_GENERATION_PIXELS = 64L * 1024L * 1024L;
+    public static final long MAX_IMAGE_PIXELS = Long.MAX_VALUE;
+    public static final long MAX_GENERATION_PIXELS = Long.MAX_VALUE;
     public static final float MAX_GUI_MAGNITUDE = 65536.0F;
 
     private ResourceLimits() {
