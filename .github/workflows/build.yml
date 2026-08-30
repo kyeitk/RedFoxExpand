@@ -1,0 +1,39 @@
+name: Build RedFoxExpand 26.2
+
+on:
+  push:
+    branches:
+      - 26.2
+  pull_request:
+    branches:
+      - 26.2
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build 26.2 Fabric
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RedFoxExpand-26.2
+          path: |
+            build/libs/*.jar
+          if-no-files-found: error
