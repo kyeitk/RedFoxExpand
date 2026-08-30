@@ -1,0 +1,50 @@
+name: Build RedFoxExpand
+
+on:
+  push:
+    branches:
+      - main
+      - "26.2"
+      - "1.7.10"
+  pull_request:
+    branches:
+      - main
+      - "26.2"
+      - "1.7.10"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Minecraft 1.8.9 Mod
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java 8
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: Prepare Release
+        run: ./gradlew prepareRelease --no-daemon
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: RedFoxExpand-1.8.9
+          path: |
+            build/libs/*.jar
+            release/*.jar
+          if-no-files-found: error
