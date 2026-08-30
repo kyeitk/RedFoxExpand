@@ -8,7 +8,7 @@
   "contact": {
     "sources": "https://github.com/kyeitk/RedFoxExpand"
   },
-  "license": "All-Rights-Reserved",
+  "license": "CC-BY-NC-SA-4.0",
   "environment": "client",
   "entrypoints": {
     "client": [
