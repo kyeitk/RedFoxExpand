@@ -1,0 +1,39 @@
+name: Build RedFoxExpand 1.7.10
+
+on:
+  push:
+    branches:
+      - 1.7.10
+  pull_request:
+    branches:
+      - 1.7.10
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build 1.7.10 Forge
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RedFoxExpand-1.7.10
+          path: |
+            build/libs/*.jar
+          if-no-files-found: error
