@@ -5,8 +5,9 @@
 [![Java](https://img.shields.io/badge/Java-8-red.svg)](https://www.oracle.com/java/)
 [![Mod Loader](https://img.shields.io/badge/Mod%20Loader-Forge-blue.svg)](https://files.minecraftforge.net/)
 [![Client Side](https://img.shields.io/badge/Side-Client--Only-purple.svg)](#)
-[![Build](https://github.com/kyeitk/RedFoxExpand/actions/workflows/build.yml/badge.svg)](https://github.com/kyeitk/RedFoxExpand/actions)
 [![Status](https://img.shields.io/badge/Status-Development-yellow.svg)](#)
+
+[![Build](https://github.com/kyeitk/RedFoxExpand/actions/workflows/build.yml/badge.svg)](https://github.com/kyeitk/RedFoxExpand/actions)
 
 RedFoxExpand 是由 **RedFox团队** 开发的 Minecraft **1.8.9 Forge** 客户端 Mod。它允许材质包作者通过
 JSON 修改容器 GUI 的尺寸、位置、Slot、贴图和文字，并使用响应式状态、动画与场景图构建动态界面。
